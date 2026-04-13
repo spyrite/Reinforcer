@@ -1,0 +1,274 @@
+{
+  "Uuid": "6e14ae3e-2c22-4980-8301-d377ba536346",
+  "IsCustomNode": true,
+  "Category": "1П.Отладка",
+  "Description": "Удаляет дублирующиеся стержни внутри арматурного контейнера",
+  "Name": "УдалениеДубликатовВКонтейнере",
+  "ElementResolver": {
+    "ResolutionMap": {
+      "List": {
+        "Key": "List",
+        "Value": "BuiltIn.ds"
+      }
+    }
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import sys\r\nimport clr\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nfrom Autodesk.Revit.DB.Structure import *\r\nclr.AddReference('RevitServices')\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndef LinesAreEqual(line1, line2):\r\n\tfor i in range(2):\r\n\t\tif not line1.GetEndPoint(i).IsAlmostEqualTo(line2.GetEndPoint(i)):\r\n\t\t\treturn False\r\n\telse:\r\n\t\treturn True\r\n\t\t\r\ndef RPsAreEqual(rp1, rp2):\r\n\tif rp1.Lines.Count == rp2.Lines.Count:\r\n\t\tfor i in range(rp1.Lines.Count):\r\n\t\t\tif not LinesAreEqual(rp1.Lines[i], rp2.Lines[i]):\r\n\t\t\t\treturn False\r\n\t\telse:\r\n\t\t\treturn True\r\n\telse:\r\n\t\treturn False\r\n\t\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\nRCPs = IN[0]\t\r\n\r\nduplicateRPs = []\r\nfor rcp in RCPs:\r\n\tduplicateRPs.append([])\r\n\tids = []\r\n\tfor rp1 in rcp.RPs:\r\n\t\tfor rp2 in rcp.RPs:\r\n\t\t\tif rp1 != rp2 and RPsAreEqual(rp1, rp2) and rp2.RCI.ItemIndex not in ids:\r\n\t\t\t\tduplicateRPs[-1].append([rp1, rp2])\r\n\t\t\t\tids += [rp1.RCI.ItemIndex, rp2.RCI.ItemIndex]\r\n\r\nTransactionManager.Instance.EnsureInTransaction(doc)\r\n\r\nfor i, rpSet in enumerate(duplicateRPs):\r\n\trcp = RCPs[i]\r\n\tfor pairRP in rpSet:\t\r\n\t\trcp.RPs.remove(pairRP[-1])\r\n\t\trcp.Elem.RemoveItem(pairRP[-1].RCI)\r\n\t\t\r\nTransactionManager.Instance.TransactionTaskDone()\r\n\r\nOUT = RCPs",
+      "Engine": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "5f964992cbdb4e52997aa80152d9f63d",
+      "Inputs": [
+        {
+          "Id": "e3f8354a05634f43876e161dee6b1c18",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "1f72cf62183942f7942e220ee86542bd",
+          "Name": "OUT",
+          "Description": "Результат сценария Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выполнение встроенного сценария Python."
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Function, DynamoCore",
+      "FunctionSignature": "a3419349-c73a-4272-aa11-02d74f5b05e1",
+      "FunctionType": "Graph",
+      "NodeType": "FunctionNode",
+      "Id": "22c2407e72b842e8af33c0df20d4da30",
+      "Inputs": [
+        {
+          "Id": "c393051143544225bc9fd433966f677d",
+          "Name": "rebarsOrRebarContainers",
+          "Description": "Список арматурных стержней или арматурных контейнеров\n\nvar[]..[]",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "9abf3b1795524911b0fcb43ef34ffb2b",
+          "Name": "distribToken",
+          "Description": "Знак направления распределения арматурных стержней\n\nint\nЗначение по умолчанию : 1",
+          "UsingDefaultValue": true,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "d9a5ee8cae934e8e8f2cfce016bd64fd",
+          "Name": "rebarParameters",
+          "Description": "Список параметров арматуры",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "706f829ec1a042b89db5155412c00447",
+          "Name": "rebarContainerParameters",
+          "Description": "Список параметров контейнеров",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Auto",
+      "Description": "Сведения и методы, связанные с арматурными стержнями и арматурными контейнерами"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Symbol, DynamoCore",
+      "NodeType": "InputNode",
+      "Parameter": {
+        "Name": "rebarsOrRebarContainers",
+        "TypeName": "var",
+        "TypeRank": -1,
+        "DefaultValue": null,
+        "Description": " Список арматурных контейнеров"
+      },
+      "Id": "ea00205c4762499b845060842165ad77",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "1b4e3882d44d4e4f90998b39f85bf660",
+          "Name": "",
+          "Description": "Обозначение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Параметр функции, использовать с пользовательскими узлами.\r\n\r\nМожно указать тип и значение параметра по умолчанию. Например,\r\n\r\nввод: var [], [].\r\nзначение: bool = false"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Output, DynamoCore",
+      "NodeType": "OutputNode",
+      "ElementResolver": null,
+      "Symbol": "//Список параметров контейнеров\r\nrebarContainerParameters",
+      "Id": "4aa965e7d3de4629b87dda5fdf43f7b8",
+      "Inputs": [
+        {
+          "Id": "cb3d2234700944ac93b740cdc2bbe8f4",
+          "Name": "",
+          "Description": "",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [],
+      "Replication": "Disabled",
+      "Description": "Результат функции, применять с пользовательскими узлами"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NodeType": "NumberInputNode",
+      "NumberType": "Double",
+      "InputValue": 1.0,
+      "Id": "847a2591279c4f5eb8fbfefeb74200c0",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "cfc1561e3494476586bc2f6d99df5182",
+          "Name": "",
+          "Description": "Double",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание числа."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "1f72cf62183942f7942e220ee86542bd",
+      "End": "cb3d2234700944ac93b740cdc2bbe8f4",
+      "Id": "53f45b3023c1415297a3852ffa427f6f"
+    },
+    {
+      "Start": "706f829ec1a042b89db5155412c00447",
+      "End": "e3f8354a05634f43876e161dee6b1c18",
+      "Id": "0d182a2d1331403997d25cf23cf4f294"
+    },
+    {
+      "Start": "1b4e3882d44d4e4f90998b39f85bf660",
+      "End": "c393051143544225bc9fd433966f677d",
+      "Id": "fa492d6f0aae4aecb10fb8da3e1d325b"
+    },
+    {
+      "Start": "cfc1561e3494476586bc2f6d99df5182",
+      "End": "9abf3b1795524911b0fcb43ef34ffb2b",
+      "Id": "41f8de8e76be48cbb7fad3884a3c19a0"
+    }
+  ],
+  "Dependencies": [
+    "a3419349-c73a-4272-aa11-02d74f5b05e1"
+  ],
+  "NodeLibraryDependencies": [],
+  "Author": "None provided",
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": false,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.12.0.5650",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Фоновый просмотр",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "NodeViews": [
+      {
+        "ShowGeometry": true,
+        "Name": "Удаление дубликатов",
+        "Id": "5f964992cbdb4e52997aa80152d9f63d",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 787.05414824987815,
+        "Y": 12.35005892252093
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "ПараметрыАрматуры",
+        "Id": "22c2407e72b842e8af33c0df20d4da30",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 268.0,
+        "Y": -14.0
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Input",
+        "Id": "ea00205c4762499b845060842165ad77",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -147.0,
+        "Y": -15.0
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Output",
+        "Id": "4aa965e7d3de4629b87dda5fdf43f7b8",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1073.0872521795027,
+        "Y": 11.394548615945439
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Number",
+        "Id": "847a2591279c4f5eb8fbfefeb74200c0",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 109.1566333034902,
+        "Y": 84.560778008939621
+      }
+    ],
+    "Annotations": [],
+    "X": 362.04329870781771,
+    "Y": 324.40382995436966,
+    "Zoom": 0.88878922829715579
+  }
+}

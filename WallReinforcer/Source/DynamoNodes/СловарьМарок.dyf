@@ -1,0 +1,391 @@
+{
+  "Uuid": "cc4ca971-d31d-4e32-b1b6-bb994461e96b",
+  "IsCustomNode": true,
+  "Category": "1П.Подготовка",
+  "Description": "Создает словарь марок для расшифровки. Например, марки элементов, начинающиеся на \"Пм-\", будут расшифровываться как \"Плита монолитная\". Используется для формирования названий видов, спецификаций, листов и т. п. Работает на внешнем файле EXCEL.",
+  "Name": "СловарьМарок",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "CoreNodeModels.Input.BoolSelector, CoreNodeModels",
+      "Id": "863778e7530a4928b2cd233ba0b669ea",
+      "NodeType": "BooleanInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "84a5b1a6e12b41deb6b31db056e34299",
+          "Name": "",
+          "Description": "Boolean",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Возможность выбора между значениями True и False",
+      "InputValue": false
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.BoolSelector, CoreNodeModels",
+      "Id": "ca416bb157864c57baacdb70c6d91b6e",
+      "NodeType": "BooleanInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "5a98f276463a4e46bd83f92699c6e52d",
+          "Name": "",
+          "Description": "Boolean",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Возможность выбора между значениями True и False",
+      "InputValue": false
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "Id": "f35abae38f4c43e38bfebae514f9dafe",
+      "NodeType": "StringInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "69fc06605ce740509ab8dd51fc99681d",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание строки.",
+      "InputValue": "Расшифровка марок"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.ZeroTouch.DSFunction, DynamoCore",
+      "Id": "c6eb45a82b804f0c93027ec07df632d0",
+      "NodeType": "FunctionNode",
+      "Inputs": [
+        {
+          "Id": "8a2f630715af483f91e42412552c5c8d",
+          "Name": "file",
+          "Description": "var",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "1c62dfc644514ce683fc13e6b136712b",
+          "Name": "sheetName",
+          "Description": "string",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "2ebf103af691470e987453c0b4ddb0d6",
+          "Name": "readAsStrings",
+          "Description": "bool\nЗначение по умолчанию : false",
+          "UsingDefaultValue": true,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "d693755fe1fd4b3c86286003b820e6c7",
+          "Name": "showExcel",
+          "Description": "bool\nЗначение по умолчанию : true",
+          "UsingDefaultValue": true,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "1583cc5936424699baa7e45caf37137a",
+          "Name": "var[][]",
+          "Description": "var[][]",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "FunctionSignature": "DSOffice.Data.ImportExcel@var,string,bool,bool",
+      "Replication": "Auto",
+      "Description": "Data.ImportExcel (file: var, sheetName: string, readAsStrings: bool = false, showExcel: bool = true): var[][]"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.Filename, CoreNodeModels",
+      "Id": "ede57826f3fb4c7eb9ec6dbae940fd5f",
+      "NodeType": "ExtensionNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "2a66f9fc456f4e38acdb2e294845face",
+          "Name": "",
+          "Description": "Путь к файлу",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Возможность выбрать файл в системе и возврат пути к нему",
+      "HintPath": "P:\\! Справка !\\Конструкции\\Расшифровка марок.xlsx",
+      "InputValue": "..\\! Справка !\\Конструкции\\Расшифровка марок.xlsx"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.FileObject, CoreNodeModels",
+      "Id": "437b3de7a2da4b508c08f732b4060f54",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "a3df9ad4c8fb4092a9791b43d335a806",
+          "Name": "path",
+          "Description": "Путь к файлу в виде строки.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "13911ac925c04702a4e3843f3443b467",
+          "Name": "file",
+          "Description": "Файловый объект",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание объекта файла на основе указанного пути"
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "dict = {}\r\nfor item in IN[0]:\r\n    dict[item[0]] = [item[i] for i in [1,2,3,4]]\r\n   \r\nOUT = dict",
+      "Engine": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "fbbf0819bae4487fb0f6bc5756769a99",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "d1a2dd6bda5c458a8a9e2299ce871798",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "8b7a9d2f3db84f2b91139a0ec36cb16e",
+          "Name": "OUT",
+          "Description": "Результат сценария Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выполнение встроенного сценария Python."
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Output, DynamoCore",
+      "ElementResolver": null,
+      "Symbol": "OUT",
+      "Id": "bb80c9be835446839df61471926a43e3",
+      "NodeType": "OutputNode",
+      "Inputs": [
+        {
+          "Id": "9090d6a91726483985601dfdd881c51b",
+          "Name": "",
+          "Description": "",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [],
+      "Replication": "Disabled",
+      "Description": "Результат функции, применять с пользовательскими узлами"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "84a5b1a6e12b41deb6b31db056e34299",
+      "End": "d693755fe1fd4b3c86286003b820e6c7",
+      "Id": "dd7bb29a72a54f77a940837c5c1c9588",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "5a98f276463a4e46bd83f92699c6e52d",
+      "End": "2ebf103af691470e987453c0b4ddb0d6",
+      "Id": "7ed6b14699c940ce8fd05d0335478a2a",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "69fc06605ce740509ab8dd51fc99681d",
+      "End": "1c62dfc644514ce683fc13e6b136712b",
+      "Id": "40fb9870a75342989b846e2d70e5019d",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "1583cc5936424699baa7e45caf37137a",
+      "End": "d1a2dd6bda5c458a8a9e2299ce871798",
+      "Id": "ef26240f963d44c09eac26d35d3a99ba",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "2a66f9fc456f4e38acdb2e294845face",
+      "End": "a3df9ad4c8fb4092a9791b43d335a806",
+      "Id": "10eb4ab878884bef86ad8de65d0bb7d4",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "13911ac925c04702a4e3843f3443b467",
+      "End": "8a2f630715af483f91e42412552c5c8d",
+      "Id": "a05f2aa7d7f947adaa1bf3d402bc8ec6",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "8b7a9d2f3db84f2b91139a0ec36cb16e",
+      "End": "9090d6a91726483985601dfdd881c51b",
+      "Id": "4ef6543d4c674bd8a874516265f78fe2",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Author": "None provided",
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": false,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "3.3.0.6316",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "_Фоновый просмотр",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "863778e7530a4928b2cd233ba0b669ea",
+        "Name": "Boolean",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 712.9925264323709,
+        "Y": 414.03278153464953
+      },
+      {
+        "Id": "ca416bb157864c57baacdb70c6d91b6e",
+        "Name": "Boolean",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 715.0626295154146,
+        "Y": 273.9725906963299
+      },
+      {
+        "Id": "f35abae38f4c43e38bfebae514f9dafe",
+        "Name": "String",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 694.1734863013633,
+        "Y": 142.5605157128648
+      },
+      {
+        "Id": "c6eb45a82b804f0c93027ec07df632d0",
+        "Name": "Data.ImportExcel",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 1025.0259904845707,
+        "Y": 112.47175397580963
+      },
+      {
+        "Id": "ede57826f3fb4c7eb9ec6dbae940fd5f",
+        "Name": "File Path",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 250.0,
+        "Y": 35.85498138903222
+      },
+      {
+        "Id": "437b3de7a2da4b508c08f732b4060f54",
+        "Name": "File From Path",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 717.3683880502792,
+        "Y": 0.0
+      },
+      {
+        "Id": "fbbf0819bae4487fb0f6bc5756769a99",
+        "Name": "Словарь",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 1295.4808422342144,
+        "Y": 113.56390757238341
+      },
+      {
+        "Id": "bb80c9be835446839df61471926a43e3",
+        "Name": "Output",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 1520.705464264452,
+        "Y": 115.76673866090715
+      }
+    ],
+    "Annotations": [],
+    "X": -278.86905559578383,
+    "Y": 231.51099535326443,
+    "Zoom": 1.1917937712929563
+  }
+}

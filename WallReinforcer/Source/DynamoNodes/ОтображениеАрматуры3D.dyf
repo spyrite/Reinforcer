@@ -1,0 +1,139 @@
+{
+  "Uuid": "9e797c68-b1c1-49d6-b52c-171800737060",
+  "IsCustomNode": true,
+  "Category": "1П.Армирование",
+  "Description": "Настройка арматуры в трёхмерном отображении на активном виде (актуально до 2022 версии Revit)",
+  "Name": "ОтображениеАрматуры3D",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [
+    {
+      "Id": "ce3e254d61974e9c86e61a5974fac957",
+      "Name": "Редактирование арматуры",
+      "Type": "unknown",
+      "InitialValue": "",
+      "Description": "Выполнение встроенного сценария Python."
+    }
+  ],
+  "Nodes": [
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Symbol, DynamoCore",
+      "NodeType": "InputNode",
+      "Parameter": {
+        "Name": "rebarsOrRebarContainers",
+        "TypeName": "var",
+        "TypeRank": -1,
+        "DefaultValue": null,
+        "Description": "Список арматурных стержней или арматурных контейнеров"
+      },
+      "Id": "93946519153a40b1990b505cbc91ddff",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "a08d98cfb88c46aeb69403a75950fd19",
+          "Name": "",
+          "Description": "Обозначение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Параметр функции, использовать с пользовательскими узлами.\r\n\r\nМожно указать тип и значение параметра по умолчанию. Например,\r\n\r\nввод: var [], [].\r\nзначение: bool = false"
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import sys\r\nimport clr\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nfrom Autodesk.Revit.DB.Structure import *\r\nclr.AddReference('RevitServices')\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\nelems = UnwrapElement(IN[0])\r\n\r\nrebarFilter = LogicalOrFilter([ElementClassFilter(Rebar), ElementClassFilter(RebarInSystem), ElementClassFilter(RebarContainer)])\r\nview = doc.ActiveView\r\n\r\nTransactionManager.Instance.EnsureInTransaction(doc)\r\n\r\nif view.GetType() == View3D:\r\n\tfor elem in elems:\r\n\t\tif rebarFilter.PassesFilter(elem):\t\r\n\t\t\telem.SetSolidInView(view, True)\r\n\t\t\telem.SetUnobscuredInView(view, True)\r\n\t\t\r\nTransactionManager.Instance.TransactionTaskDone()\r\n\r\nOUT = ''",
+      "Engine": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "ce3e254d61974e9c86e61a5974fac957",
+      "Inputs": [
+        {
+          "Id": "0e57d61a544f44c2b8105b68042fa2b8",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "d39dc727851a45a8a99fa999e9afaa9e",
+          "Name": "OUT",
+          "Description": "Результат сценария Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выполнение встроенного сценария Python."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "a08d98cfb88c46aeb69403a75950fd19",
+      "End": "0e57d61a544f44c2b8105b68042fa2b8",
+      "Id": "4aa859e211b049fd92d689290d484c1f"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Author": "None provided",
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": false,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.12.0.5650",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Фоновый просмотр",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "NodeViews": [
+      {
+        "ShowGeometry": true,
+        "Name": "Input",
+        "Id": "93946519153a40b1990b505cbc91ddff",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -229.8066270087412,
+        "Y": 304.13913702121118
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Редактирование арматуры",
+        "Id": "ce3e254d61974e9c86e61a5974fac957",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": true,
+        "Excluded": false,
+        "X": 371.78203067553659,
+        "Y": 307.05585675772261
+      }
+    ],
+    "Annotations": [],
+    "X": 184.96931329300475,
+    "Y": 193.71761083654934,
+    "Zoom": 0.69134779386718748
+  }
+}

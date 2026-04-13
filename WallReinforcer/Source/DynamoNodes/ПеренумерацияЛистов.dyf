@@ -1,0 +1,430 @@
+{
+  "Uuid": "f7572733-b0c9-496b-a9f0-d520441db187",
+  "IsCustomNode": true,
+  "Category": "1П.Чертежи.Листы",
+  "Description": "Определение нового номера для заданных листов",
+  "Name": "ПеренумерацияЛистов",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "1П_Штамп_Номер листа",
+      "Id": "90fcf01e28ad4f99a46755d2b597e3a2",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "90dd96742c1b45afbafab52730649ff1",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание строки."
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.ZeroTouch.DSFunction, DynamoCore",
+      "NodeType": "FunctionNode",
+      "FunctionSignature": "Revit.Elements.Views.Sheet.SheetNumber",
+      "Id": "a5fecef8a2a2405ab4f7695f28949467",
+      "Inputs": [
+        {
+          "Id": "0fc45c92eeb34845906d9df2f049941a",
+          "Name": "sheet",
+          "Description": "Revit.Elements.Views.Sheet",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "8ae3e531480a4942aeb10384a6cd78d3",
+          "Name": "string",
+          "Description": "string",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Auto",
+      "Description": "Получение свойства SheetNumber для листа\n\nSheet.SheetNumber: string"
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import sys\r\nimport clr\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\n\r\nsheetNumbers = UnwrapElement(IN[0])\r\n\r\nTrimmedNumbers = []\r\nfor i in sheetNumbers:\r\n\tif len(i.split('-')) > 1:\r\n\t\ttn = float(i.split('-')[1].split('_')[0])\r\n\telse:\r\n\t\ttn = float(i.split('_')[0])\r\n\t\t\r\n\tTrimmedNumbers.append(tn)\r\n\t\r\nOUT = TrimmedNumbers",
+      "Engine": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "a69709cacf7749399d3a9282f238265c",
+      "Inputs": [
+        {
+          "Id": "621b62538bed4c2e9fceb9d39df9c636",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "b21b10b2a12f40c496184723f73ce471",
+          "Name": "OUT",
+          "Description": "Результат сценария Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выполнение встроенного сценария Python."
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.ZeroTouch.DSFunction, DynamoCore",
+      "NodeType": "FunctionNode",
+      "FunctionSignature": "DSCore.List.SortByKey@var[]..[],var[]..[]",
+      "Id": "00fc28c694724226a9939ace118ad37c",
+      "Inputs": [
+        {
+          "Id": "383d71467fd84fb39028e1c87b65d0b0",
+          "Name": "list",
+          "Description": "список, который требуется отсортировать\n\nvar[]..[]",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "b180c5b714724863bbb8f737b866b722",
+          "Name": "keys",
+          "Description": "список ключей, ключи должны быть сортируемыми (например, числа или строки)\n\nvar[]..[]",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "7a74c57e468a43e6b6999171475f10fe",
+          "Name": "sortedList",
+          "Description": "тип: var[]..[]",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "b72835a7632847ec99ff3f16dfb007cf",
+          "Name": "sortedKeys",
+          "Description": "тип: var[]..[]",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Auto",
+      "Description": "Сортировка списка на основе ключей\n\nList.SortByKey (list: var[]..[], keys: var[]..[]): var[]..[]"
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import sys\r\nimport clr\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nclr.AddReference('RevitServices')\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\nsheets = UnwrapElement(IN[0])\r\nstartNumber = int(IN[1])\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\nnewNumbers = []\r\n\r\nfor i, sheet in enumerate(sheets):\r\n\tif len(sheet.SheetNumber.split('-')) > 1:\r\n\t\tPrefix = sheet.SheetNumber.split('-')[0]\r\n\t\tnewNumbers.append(Prefix + '-' + str(i + startNumber)) \r\n\telse:\r\n\t\tnewNumbers.append(str(i + startNumber))\r\n\r\nTransactionManager.Instance.EnsureInTransaction(doc)\r\n\r\nfor i, sheet in enumerate(sheets):\r\n\tsheet.SheetNumber = newNumbers[i] + '_temp'\r\n\r\nfor i, sheet in enumerate(sheets):\r\n\tsheet.SheetNumber = newNumbers[i]\r\n\tif sheet.GetParameters(IN[2]):\r\n\t\tsheet.GetParameters(IN[2])[0].Set(newNumbers[i].split('-')[-1])\r\n\t\t\t\t\r\ndoc.Regenerate()\r\n\r\nTransactionManager.Instance.TransactionTaskDone()\r\n\r\nOUT = newNumbers",
+      "Engine": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "69eb40f84e444791ab50b0c73ef0d33b",
+      "Inputs": [
+        {
+          "Id": "a660c166e8b2480d891c03afba2e9167",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "0d1257609fe040ecb7feab00c77b9a28",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "a7d2ee1841a14f27bf4933d3e92ecb9c",
+          "Name": "IN[2]",
+          "Description": "Input #2",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "7d01a6184119487992d2e75d91c8308a",
+          "Name": "OUT",
+          "Description": "Результат сценария Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выполнение встроенного сценария Python."
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Symbol, DynamoCore",
+      "NodeType": "InputNode",
+      "Parameter": {
+        "Name": "sheets",
+        "TypeName": "var",
+        "TypeRank": -1,
+        "DefaultValue": null,
+        "Description": "Список листов"
+      },
+      "Id": "bbe2d439620249378b05b3ff61cd2a67",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "64a3485d400e4005b5bc4d3aa20c6895",
+          "Name": "",
+          "Description": "Обозначение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Параметр функции, использовать с пользовательскими узлами.\r\n\r\nМожно указать тип и значение параметра по умолчанию. Например,\r\n\r\nввод: var [], [].\r\nзначение: bool = false"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Output, DynamoCore",
+      "NodeType": "OutputNode",
+      "ElementResolver": null,
+      "Symbol": "//Новая нумерация листов\r\nnewSheetNumbers",
+      "Id": "19f85296a541456e9104ceafca1d54f5",
+      "Inputs": [
+        {
+          "Id": "6c19387f20bd4c8881969a5fea492462",
+          "Name": "",
+          "Description": "",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [],
+      "Replication": "Disabled",
+      "Description": "Результат функции, применять с пользовательскими узлами"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Symbol, DynamoCore",
+      "NodeType": "InputNode",
+      "Parameter": {
+        "Name": "startSheetNumber",
+        "TypeName": "int",
+        "TypeRank": 0,
+        "DefaultValue": null,
+        "Description": "Начать нумерацию листов с номера"
+      },
+      "Id": "dbd288565d2f492b8929ce23636048be",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "3e7b97f9b3bb43c3a31dee64852acdf6",
+          "Name": "",
+          "Description": "Обозначение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Параметр функции, использовать с пользовательскими узлами.\r\n\r\nМожно указать тип и значение параметра по умолчанию. Например,\r\n\r\nввод: var [], [].\r\nзначение: bool = false"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "90dd96742c1b45afbafab52730649ff1",
+      "End": "a7d2ee1841a14f27bf4933d3e92ecb9c",
+      "Id": "a80769728d2c45afa52b4dc4d93de2ad",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "8ae3e531480a4942aeb10384a6cd78d3",
+      "End": "621b62538bed4c2e9fceb9d39df9c636",
+      "Id": "5dc94fb6f0314e04aff64e8b4489e182",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "b21b10b2a12f40c496184723f73ce471",
+      "End": "b180c5b714724863bbb8f737b866b722",
+      "Id": "2a8975a658614fb19eaa5ac3db822597",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "7a74c57e468a43e6b6999171475f10fe",
+      "End": "a660c166e8b2480d891c03afba2e9167",
+      "Id": "de04716d7d6e4f32a142a970777d8cd8",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "7d01a6184119487992d2e75d91c8308a",
+      "End": "6c19387f20bd4c8881969a5fea492462",
+      "Id": "d755b56b7325471c9f02a6d5bfa6cbd2",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "64a3485d400e4005b5bc4d3aa20c6895",
+      "End": "0fc45c92eeb34845906d9df2f049941a",
+      "Id": "9162d34db8614216a27dad2276a40d28",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "64a3485d400e4005b5bc4d3aa20c6895",
+      "End": "383d71467fd84fb39028e1c87b65d0b0",
+      "Id": "57b2bc85427a4eda9650957082ed00da",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "3e7b97f9b3bb43c3a31dee64852acdf6",
+      "End": "0d1257609fe040ecb7feab00c77b9a28",
+      "Id": "33695d2f9aa74da5a303b5b30180b685",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Author": "None provided",
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": false,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.13.1.3887",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Фоновый просмотр",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Name": "Название параметра листа",
+        "ShowGeometry": true,
+        "Id": "90fcf01e28ad4f99a46755d2b597e3a2",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 732.38257453218864,
+        "Y": 425.24688934187532
+      },
+      {
+        "Name": "Sheet.SheetNumber",
+        "ShowGeometry": true,
+        "Id": "a5fecef8a2a2405ab4f7695f28949467",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 251.30577385685933,
+        "Y": 104.02664029777782
+      },
+      {
+        "Name": "Отсечение префикса",
+        "ShowGeometry": true,
+        "Id": "a69709cacf7749399d3a9282f238265c",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 488.13271445456439,
+        "Y": 104.38148582320889
+      },
+      {
+        "Name": "List.SortByKey",
+        "ShowGeometry": true,
+        "Id": "00fc28c694724226a9939ace118ad37c",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 797.39555280366744,
+        "Y": 0.0
+      },
+      {
+        "Name": "Перенумерация листов",
+        "ShowGeometry": true,
+        "Id": "69eb40f84e444791ab50b0c73ef0d33b",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1196.6054698662244,
+        "Y": 138.32912876675118
+      },
+      {
+        "Name": "Input",
+        "ShowGeometry": true,
+        "Id": "bbe2d439620249378b05b3ff61cd2a67",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -62.246190006585721,
+        "Y": 3.0363995125163683
+      },
+      {
+        "Name": "Output",
+        "ShowGeometry": true,
+        "Id": "19f85296a541456e9104ceafca1d54f5",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1497.5726711584605,
+        "Y": 136.94226143140679
+      },
+      {
+        "Name": "Input",
+        "ShowGeometry": true,
+        "Id": "dbd288565d2f492b8929ce23636048be",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 659.442496050069,
+        "Y": 258.56978763193433
+      }
+    ],
+    "Annotations": [],
+    "X": 159.90465935304167,
+    "Y": 404.76607663591096,
+    "Zoom": 0.642869557405948
+  }
+}

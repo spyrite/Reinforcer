@@ -1,0 +1,708 @@
+{
+  "Uuid": "bd588748-f5fe-4679-8df4-f62babe87bb6",
+  "IsCustomNode": true,
+  "Category": "1П.Виды",
+  "Description": "Создает горизонтальный разрез под углом A к \"глобальной оси X\" (XYZ.BasisX), где 0<A<=180. Применяется для создания опалубочных чертежей и схем армирования стен и колонн.",
+  "Name": "СозданиеГоризонтальногоРазреза",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "1П_Штамп_Раздел проекта",
+      "Id": "b006d3ea04a04b94b1bdaa80fa4ca2f3",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "526929329adb42f9ae1da275462a62a5",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание строки."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.CreateList, CoreNodeModels",
+      "VariableInputPorts": true,
+      "NodeType": "ExtensionNode",
+      "Id": "8d5de3204c784ebbbe897115cf2ed1e2",
+      "Inputs": [
+        {
+          "Id": "6b09349db1c94ff7aee54b9902b38535",
+          "Name": "item0",
+          "Description": "Индекс элемента #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "80eb0215ccdc4dd4b287c8f255dc2205",
+          "Name": "list",
+          "Description": "Список (тип: var[]..[])",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание нового списка из заданных входных значений"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleSlider, CoreNodeModels",
+      "NodeType": "NumberInputNode",
+      "NumberType": "Double",
+      "MaximumValue": 2000.0,
+      "MinimumValue": 0.0,
+      "StepValue": 10.0,
+      "InputValue": 250.0,
+      "Id": "78b6258669944d4b928d2dc108e7cc44",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "5ffe9d8c6d4d4fc690d979cc8271fc8d",
+          "Name": "",
+          "Description": "Double",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Регулятор, создающий числовые значения."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleSlider, CoreNodeModels",
+      "NodeType": "NumberInputNode",
+      "NumberType": "Double",
+      "MaximumValue": 2000.0,
+      "MinimumValue": 0.0,
+      "StepValue": 10.0,
+      "InputValue": 250.0,
+      "Id": "8c09478ca588458dbd8860745d56d7aa",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "71823000cba54e1bb7707546612def45",
+          "Name": "",
+          "Description": "Double",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Регулятор, создающий числовые значения."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleSlider, CoreNodeModels",
+      "NodeType": "NumberInputNode",
+      "NumberType": "Double",
+      "MaximumValue": 3000.0,
+      "MinimumValue": 0.0,
+      "StepValue": 100.0,
+      "InputValue": 600.0,
+      "Id": "91f63b2772e2445fb77e0ebdf874f0a7",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "576e3697daa642b2a4a03d3d62a26863",
+          "Name": "",
+          "Description": "Double",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Регулятор, создающий числовые значения."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.CreateList, CoreNodeModels",
+      "VariableInputPorts": true,
+      "NodeType": "ExtensionNode",
+      "Id": "5d4f3ae875dc4cd7873d714d3da56de0",
+      "Inputs": [
+        {
+          "Id": "8b45d3a7ddce4a4fb82fffa0badb1c2b",
+          "Name": "item0",
+          "Description": "Индекс элемента #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "a73aff52781e4fd1928d44c5912898d5",
+          "Name": "item1",
+          "Description": "Индекс элемента #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "05fcfcdc947642dbb3259e4085c3fd2d",
+          "Name": "item2",
+          "Description": "Индекс элемента #2",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "a40e95c0e89c406b88d014c2b5f2b278",
+          "Name": "item3",
+          "Description": "Индекс элемента #3",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "bcdbda74c06e40f1bb7c09b1234f63ca",
+          "Name": "item4",
+          "Description": "Индекс элемента #4",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "a80706a43c16449fac4599f1057dd1f2",
+          "Name": "list",
+          "Description": "Список (тип: var[]..[])",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание нового списка из заданных входных значений"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleSlider, CoreNodeModels",
+      "NodeType": "NumberInputNode",
+      "NumberType": "Double",
+      "MaximumValue": 3000.0,
+      "MinimumValue": 0.0,
+      "StepValue": 100.0,
+      "InputValue": 600.0,
+      "Id": "dc4b5f67ea714824b316fe01497d4c05",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "f340b09124544c2eba314a7927eff445",
+          "Name": "",
+          "Description": "Double",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Регулятор, создающий числовые значения."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleSlider, CoreNodeModels",
+      "NodeType": "NumberInputNode",
+      "NumberType": "Double",
+      "MaximumValue": 3000.0,
+      "MinimumValue": 0.0,
+      "StepValue": 100.0,
+      "InputValue": 500.0,
+      "Id": "f962f9c4c6a746f8aa13082684110f56",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "637ce9a35abe474399923538e74a6685",
+          "Name": "",
+          "Description": "Double",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Регулятор, создающий числовые значения."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\r\nimport math\r\nclr.AddReference('System')\r\nfrom System.Collections.Generic import List\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nclr.AddReference('RevitServices')\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndef GetViewDirectionByElemNormal(elp):\r\n\tangle = XYZ.BasisX.AngleOnPlaneTo(elp.Geom.YDir, XYZ.BasisZ)\r\n\ttest.append(angle)\r\n\tif 0 < angle <= math.pi:\r\n\t\treturn elp.Geom.YDir\r\n\telse:\r\n\t\treturn -elp.Geom.YDir\r\n\t\r\ndef SetViewParameters(view):\r\n\tif elp.Mark:\r\n\t\tname = IN[2][2] + '_' + elp.Mark + '_Опалубочный чертеж - Сечение 1'\r\n\t\tif name not in uniqueViewNames:\r\n\t\t\tview.Name = name\r\n\t\t\tview.Parameter[BuiltInParameter.VIEW_DESCRIPTION].Set(groupName[elp.Mark.split('-')[0]][2] + ' ' + elp.Mark)\r\n\t\t\tuniqueViewNames.append(name)\r\n\tif template and not view.Parameter[BuiltInParameter.VIEW_TEMPLATE].IsReadOnly:\r\n\t\tview.Parameter[BuiltInParameter.VIEW_TEMPLATE].Set(template.Id)\t\t\r\n\tif not view.Parameter[BuiltInParameter.PHASE_CREATED].IsReadOnly:\r\n\t\tview.Parameter[BuiltInParameter.VIEW_PHASE].Set(elp.Phase)\t\r\n\tview.Parameter[BuiltInParameter.VIEWER_CROP_REGION_VISIBLE].Set(0)\r\n\tif view.GetParameters(IN[3][0]) and not view.GetParameters(IN[3][0])[0].IsReadOnly:\r\n\t\tview.GetParameters(IN[3][0])[0].Set(IN[2][2])\r\n\t\r\ndef HideNonHostEmbs(view):\r\n\tembIdsToHide = []\r\n\tembs = [elem for elem in FilteredElementCollector(doc, view.Id).WherePasses(embFilter).ToElements() if elem.Symbol.FamilyName.find('220') == 0]\r\n\tfor emb in embs:\r\n\t\tfilter = BoundingBoxContainsPointFilter(emb.GetTransform().Origin - (10/304.8)*emb.GetTransform().BasisZ)\r\n\t\tif not filter.PassesFilter(elp.Elem):\r\n\t\t\tembIdsToHide.append(emb.Id)\r\n\t\t\tembIdsToHide += list(emb.GetSubComponentIds())\r\n\tif embIdsToHide:\r\n\t\tview.HideElements(List[ElementId](embIdsToHide))\r\n\t\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\nELPs = IN[0]\r\n\r\ntemplates = [view for view in FilteredElementCollector(doc).OfClass(View).ToElements() if view.IsTemplate == True and view.Name == IN[2][0]]\r\ntemplate = templates[0] if templates else None\r\nviewSectionType = [type for type in FilteredElementCollector(doc).OfClass(ViewFamilyType).ToElements() if type.Parameter[BuiltInParameter.SYMBOL_NAME_PARAM].AsString() == IN[2][1]][0]\r\n\r\nembFilter = LogicalAndFilter(ElementClassFilter(FamilyInstance), LogicalOrFilter(ElementCategoryFilter(BuiltInCategory.OST_Rebar), ElementCategoryFilter(BuiltInCategory.OST_GenericModel)))\r\n\r\ncreatedViews = []\r\nuniqueViewNames = []\r\noffsets = [dim/304.8 for dim in IN[1]]\r\n\r\ngroupName = IN[4]\r\n\r\ntest = []\r\n\r\nTransactionManager.Instance.EnsureInTransaction(doc)\r\n\r\nfor i, elp in enumerate(ELPs):\r\n\t\r\n\tsectionBox = BoundingBoxXYZ()\r\n\t\r\n\ttransform = sectionBox.Transform\r\n\ttransform.BasisY = -GetViewDirectionByElemNormal(elp)\r\n\ttransform.BasisZ = -XYZ.BasisZ\r\n\ttransform.BasisX = transform.BasisY.CrossProduct(transform.BasisZ)\r\n\ttransform.Origin = elp.Geom.MiddleOrigin - transform.BasisZ*offsets[3]\r\n\t\r\n\tsectionBox.Transform = transform\r\n\t\r\n\tfor dim in range(3):\r\n\t\tsectionBox.MinEnabled[dim] = True\t\r\n\t\tsectionBox.MaxEnabled[dim] = True\r\n\t\r\n\tsectionBox.Min = -XYZ.BasisX*(elp.Geom.L/2+offsets[0]) - XYZ.BasisY*(elp.Geom.T/2+offsets[1])\r\n\tsectionBox.Max = XYZ.BasisX*(elp.Geom.L/2+offsets[0]) + XYZ.BasisY*(elp.Geom.T/2+offsets[2]) + XYZ.BasisZ*(offsets[3]+offsets[4])\r\n\r\n\tview = ViewSection.CreateSection(doc, viewSectionType.Id, sectionBox)\r\n\tSetViewParameters(view)\r\n\tHideNonHostEmbs(view)\r\n\t\r\n\tcreatedViews.append(view)\r\n\tdoc.Regenerate()\r\n\t\r\nTransactionManager.Instance.TransactionTaskDone()\r\n\r\nOUT = createdViews",
+      "Engine": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "36a6197db3db4c7e88fce12174654282",
+      "Inputs": [
+        {
+          "Id": "21c9bf9288454b09ae822b4d96b9d782",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "be8e7892f20941178e770f2900e4732a",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "dc3a495d11244e569593034a85a13b48",
+          "Name": "IN[2]",
+          "Description": "Input #2",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "405177400f034638a7d3aff7e9499e49",
+          "Name": "IN[3]",
+          "Description": "Input #3",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "8f39323781474e97a81b69f7cd59d855",
+          "Name": "IN[4]",
+          "Description": "Input #4",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "e483bc4530cd4f65b884f4260cd42a8e",
+          "Name": "OUT",
+          "Description": "Результат сценария Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выполнение встроенного сценария Python."
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Symbol, DynamoCore",
+      "NodeType": "InputNode",
+      "Parameter": {
+        "Name": "inputStringData",
+        "TypeName": "var",
+        "TypeRank": -1,
+        "DefaultValue": null,
+        "Description": "Список, состоящий из трёх элементов-строк, включающий в себя:\n1. Имя шаблона вида\n1. Имя типа сечений\n1. Марка комплекта чертежей"
+      },
+      "Id": "a6162d1269e940b8a06ef3bac4c44713",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "7c57dba5d3074310a7bfab4cf4f25dbd",
+          "Name": "",
+          "Description": "Обозначение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Параметр функции, использовать с пользовательскими узлами.\r\n\r\nМожно указать тип и значение параметра по умолчанию. Например,\r\n\r\nввод: var [], [].\r\nзначение: bool = false"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Output, DynamoCore",
+      "NodeType": "OutputNode",
+      "ElementResolver": null,
+      "Symbol": "//Созданные виды\r\nviews",
+      "Id": "a8efaf259ed84cd4964e3e0853ec686c",
+      "Inputs": [
+        {
+          "Id": "47e7ec258b7e4427b7185c088914f8e9",
+          "Name": "",
+          "Description": "",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [],
+      "Replication": "Disabled",
+      "Description": "Результат функции, применять с пользовательскими узлами"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Symbol, DynamoCore",
+      "NodeType": "InputNode",
+      "Parameter": {
+        "Name": "ELPs",
+        "TypeName": "var",
+        "TypeRank": -1,
+        "DefaultValue": null,
+        "Description": "Список ПАРАМЕТРОВ стен и (или) колонн (использовать ноды из раздела 1П.Кэширование)"
+      },
+      "Id": "8ecdfa78ddbe4684a9a517e6f7ba12d1",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "8cd518cd51cc4b138a5925cff2b8abbe",
+          "Name": "",
+          "Description": "Обозначение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Параметр функции, использовать с пользовательскими узлами.\r\n\r\nМожно указать тип и значение параметра по умолчанию. Например,\r\n\r\nввод: var [], [].\r\nзначение: bool = false"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Function, DynamoCore",
+      "FunctionSignature": "cc4ca971-d31d-4e32-b1b6-bb994461e96b",
+      "FunctionType": "Graph",
+      "NodeType": "FunctionNode",
+      "Id": "a67283f258754db7b816326953959c93",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "4a3eb4ecedc64e7883c10ce5fae9f4fc",
+          "Name": "OUT",
+          "Description": "возвращаемое значение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Auto",
+      "Description": "Создает словарь марок для расшифровки. Например, марки элементов, начинающиеся на \"Пм-\", будут расшифровываться как \"Плита монолитная\". Используется для формирования названий видов, спецификаций, листов и т. п. Работает на внешнем файле EXCEL."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "526929329adb42f9ae1da275462a62a5",
+      "End": "6b09349db1c94ff7aee54b9902b38535",
+      "Id": "d8002f14214d463584edc21ceae2b584",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "80eb0215ccdc4dd4b287c8f255dc2205",
+      "End": "405177400f034638a7d3aff7e9499e49",
+      "Id": "7ec542b4a5184f9cbd28f505d61ac0e0",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "5ffe9d8c6d4d4fc690d979cc8271fc8d",
+      "End": "bcdbda74c06e40f1bb7c09b1234f63ca",
+      "Id": "74bd4fd8d5e54294a59ee1a21a767859",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "71823000cba54e1bb7707546612def45",
+      "End": "a40e95c0e89c406b88d014c2b5f2b278",
+      "Id": "d658f41a79634f6c89188d2ae98e9683",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "576e3697daa642b2a4a03d3d62a26863",
+      "End": "05fcfcdc947642dbb3259e4085c3fd2d",
+      "Id": "d0ab2e09646144b88993a612655687bc",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "a80706a43c16449fac4599f1057dd1f2",
+      "End": "be8e7892f20941178e770f2900e4732a",
+      "Id": "86a351a0bcc1480d95c7abad86f7370a",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "f340b09124544c2eba314a7927eff445",
+      "End": "a73aff52781e4fd1928d44c5912898d5",
+      "Id": "079ea7f3ff9945b99f2f9d2080d0bb86",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "637ce9a35abe474399923538e74a6685",
+      "End": "8b45d3a7ddce4a4fb82fffa0badb1c2b",
+      "Id": "137c3a24e0a240138c819f64d4b80f3a",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "e483bc4530cd4f65b884f4260cd42a8e",
+      "End": "47e7ec258b7e4427b7185c088914f8e9",
+      "Id": "6457f5fdef2a4ad9b14fed8e6a4d78c8",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "7c57dba5d3074310a7bfab4cf4f25dbd",
+      "End": "dc3a495d11244e569593034a85a13b48",
+      "Id": "034020535ced4f36b8cb3330bf891b9c",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "8cd518cd51cc4b138a5925cff2b8abbe",
+      "End": "21c9bf9288454b09ae822b4d96b9d782",
+      "Id": "0563e0c62ab14f69abd556df3aab4a46",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "4a3eb4ecedc64e7883c10ce5fae9f4fc",
+      "End": "8f39323781474e97a81b69f7cd59d855",
+      "Id": "c2930778d3904d53811e582fba524dc9",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [
+    "cc4ca971-d31d-4e32-b1b6-bb994461e96b"
+  ],
+  "NodeLibraryDependencies": [
+    {
+      "Name": "СловарьМарок.dyf",
+      "ReferenceType": "DYFFile",
+      "Nodes": [
+        "a67283f258754db7b816326953959c93"
+      ]
+    }
+  ],
+  "Author": "None provided",
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": false,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.13.1.3887",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Фоновый просмотр",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Name": "Имя параметра",
+        "ShowGeometry": true,
+        "Id": "b006d3ea04a04b94b1bdaa80fa4ca2f3",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 636.589604104136,
+        "Y": 1021.4062161578571
+      },
+      {
+        "Name": "Имена параметров",
+        "ShowGeometry": true,
+        "Id": "8d5de3204c784ebbbe897115cf2ed1e2",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 987.13279253151,
+        "Y": 1026.1137030727173
+      },
+      {
+        "Name": "Смещение задней грани",
+        "ShowGeometry": true,
+        "Id": "78b6258669944d4b928d2dc108e7cc44",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 306.13681622553929,
+        "Y": 542.06322418821355
+      },
+      {
+        "Name": "Смещение передней грани",
+        "ShowGeometry": true,
+        "Id": "8c09478ca588458dbd8860745d56d7aa",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 305.785932478895,
+        "Y": 409.52178045582787
+      },
+      {
+        "Name": "Смещение верха",
+        "ShowGeometry": true,
+        "Id": "91f63b2772e2445fb77e0ebdf874f0a7",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 304.17232102478818,
+        "Y": 278.26125236505686
+      },
+      {
+        "Name": "Настройки границ вида",
+        "ShowGeometry": true,
+        "Id": "5d4f3ae875dc4cd7873d714d3da56de0",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 939.45316340167835,
+        "Y": 210.86258375494481
+      },
+      {
+        "Name": "Смещение низа",
+        "ShowGeometry": true,
+        "Id": "dc4b5f67ea714824b316fe01497d4c05",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 303.71780582619965,
+        "Y": 146.92365133432395
+      },
+      {
+        "Name": "Смещение по бокам",
+        "ShowGeometry": true,
+        "Id": "f962f9c4c6a746f8aa13082684110f56",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 302.23727860214046,
+        "Y": 21.369795791784782
+      },
+      {
+        "Name": "Создание горизонтального сечения",
+        "ShowGeometry": true,
+        "Id": "36a6197db3db4c7e88fce12174654282",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1799.5112209999606,
+        "Y": 401.01324730361375
+      },
+      {
+        "Name": "Input",
+        "ShowGeometry": true,
+        "Id": "a6162d1269e940b8a06ef3bac4c44713",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 615.54964091158968,
+        "Y": 717.92836958263479
+      },
+      {
+        "Name": "Output",
+        "ShowGeometry": true,
+        "Id": "a8efaf259ed84cd4964e3e0853ec686c",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 2221.3431786284646,
+        "Y": 400.44637951303184
+      },
+      {
+        "Name": "Input",
+        "ShowGeometry": true,
+        "Id": "8ecdfa78ddbe4684a9a517e6f7ba12d1",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 460.08578040445025,
+        "Y": -238.51495808888552
+      },
+      {
+        "Name": "СловарьМарок",
+        "ShowGeometry": true,
+        "Id": "a67283f258754db7b816326953959c93",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1049.786294358023,
+        "Y": 1227.4190838346867
+      }
+    ],
+    "Annotations": [
+      {
+        "Id": "7840ae915ef441dc8a2328a13677b8bb",
+        "Title": "Параметры",
+        "DescriptionText": "<Дважды нажмите здесь, чтобы изменить описание группы>",
+        "IsExpanded": true,
+        "WidthAdjustment": 0.0,
+        "HeightAdjustment": 0.0,
+        "Nodes": [
+          "b006d3ea04a04b94b1bdaa80fa4ca2f3",
+          "8d5de3204c784ebbbe897115cf2ed1e2"
+        ],
+        "HasNestedGroups": false,
+        "Left": 626.589604104136,
+        "Top": 948.4062161578571,
+        "Width": 591.54318842737393,
+        "Height": 224.00000000000011,
+        "FontSize": 36.0,
+        "InitialTop": 1021.4062161578571,
+        "InitialHeight": 149.70748691486006,
+        "TextblockHeight": 63.0,
+        "Background": "#FF48B9FF"
+      },
+      {
+        "Id": "8cbc6260ed324be5be55b75740d1b10b",
+        "Title": "Размеры",
+        "DescriptionText": "<Дважды нажмите здесь, чтобы изменить описание группы>",
+        "IsExpanded": true,
+        "WidthAdjustment": 0.0,
+        "HeightAdjustment": 0.0,
+        "Nodes": [
+          "78b6258669944d4b928d2dc108e7cc44",
+          "8c09478ca588458dbd8860745d56d7aa",
+          "91f63b2772e2445fb77e0ebdf874f0a7",
+          "5d4f3ae875dc4cd7873d714d3da56de0",
+          "dc4b5f67ea714824b316fe01497d4c05",
+          "f962f9c4c6a746f8aa13082684110f56"
+        ],
+        "HasNestedGroups": false,
+        "Left": 292.23727860214046,
+        "Top": -51.630204208215218,
+        "Width": 915.215884799538,
+        "Height": 725.69342839642877,
+        "FontSize": 36.0,
+        "InitialTop": 21.369795791784782,
+        "InitialHeight": 665.69342839642877,
+        "TextblockHeight": 63.0,
+        "Background": "#FFFFAA45"
+      }
+    ],
+    "X": -122.07117062552152,
+    "Y": 194.7587294024629,
+    "Zoom": 0.52512179784368374
+  }
+}

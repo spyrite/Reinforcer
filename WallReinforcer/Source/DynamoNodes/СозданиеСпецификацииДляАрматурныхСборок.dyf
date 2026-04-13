@@ -1,0 +1,272 @@
+{
+  "Uuid": "881896af-2c6e-41ce-a95c-1e23ef6f7093",
+  "IsCustomNode": true,
+  "Category": "1П.Ведомости и спецификации",
+  "Description": "Создаёт спецификацию элементов сборки с арматурными стержнями по заданному имени шаблона спецификации. Указывает в имени сборки количество строк спецификации (опционально).",
+  "Name": "СозданиеСпецификацииДляАрматурныхСборок",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import sys\r\nimport clr\r\nimport System\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nfrom Autodesk.Revit.DB.Structure import *\r\nclr.AddReference('RevitServices')\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\ndef ByNRows(at):\r\n\tn = int(at.Parameter[BuiltInParameter.ALL_MODEL_TYPE_NAME].AsString().split('_')[1])\r\n\treturn n\r\n\r\ndef ByPrefix(at):\r\n\treturn at.Parameter[BuiltInParameter.ALL_MODEL_TYPE_NAME].AsString().split('_')[-1].split('-')[0]\r\n\t\t\r\ndef ByNMark(at):\r\n\treturn round(float(at.Parameter[BuiltInParameter.ALL_MODEL_TYPE_NAME].AsString().split('_')[-1].split('-')[1]), 2)\r\n\t\r\ndef HasSuffix(at):\r\n\tmark = at.Parameter[BuiltInParameter.ALL_MODEL_TYPE_NAME].AsString().split('_')[-1]\r\n\tif len(mark.split('-')) > 2 or len(mark.split(' ')) > 1:\r\n\t\treturn 1\r\n\telse:\r\n\t\treturn 0\r\n\r\ndef GetSuffix(at):\r\n\tmark = at.Parameter[BuiltInParameter.ALL_MODEL_TYPE_NAME].AsString().split('_')[-1]\r\n\tif len(mark.split('-')) > 2:\t\r\n\t\tsuffix = '-' + mark.split('-')[-1]\r\n\telif len(mark.split(' ')) > 1:\r\n\t\tsuffix = ' ' + mark.split(' ')[-1]\r\n\telse:\r\n\t\tsuffix = ''\r\n\treturn suffix\r\n\t\r\ndef HasSchedules(at):\r\n\tscheduleIds = list(at.GetDependentElements(ElementClassFilter(ViewSchedule)))\r\n\tif scheduleIds:\r\n\t\treturn True\r\n\telse:\r\n\t\treturn False\r\n\r\nATs = UnwrapElement(IN[0])\r\nfirstAIs = [[doc.GetElement(id) for id in at.GetDependentElements(ElementClassFilter(AssemblyInstance))][0] for at in ATs]\r\nviewTemps = [schedule for schedule in FilteredElementCollector(doc).OfClass(ViewSchedule).ToElements() if schedule.IsTemplate and schedule.Name.find(IN[1]) == 0]\r\nviewTemp = viewTemps[0]\r\n\r\nrebarCat = Category.GetCategory(doc, BuiltInCategory.OST_Rebar)\r\n\t\r\nschedules = []\r\n\r\nTransactionManager.Instance.EnsureInTransaction(doc)\r\n\r\nfor ai in firstAIs:\r\n\tat = doc.GetElement(ai.GetTypeId())\r\n\tatOldName = at.Parameter[BuiltInParameter.ALL_MODEL_TYPE_NAME].AsString()\r\n\tif not HasSchedules(at) and len(atOldName.split('_')) == 2 and not HasSuffix(at):\r\n\t\tschedule = AssemblyViewUtils.CreateSingleCategorySchedule(doc, ai.Id, rebarCat.Id, viewTemp.Id, True)\r\n\t\tdoc.Regenerate()\r\n\t\tif IN[2]:\r\n\t\t\tnRows = schedule.GetTableData().GetSectionData(SectionType.Body).NumberOfRows\r\n\t\t\tatNewName = atOldName.split('_')[0] + '_' + str(nRows) + '_' + atOldName.split('_')[-1]\r\n\t\t\tat.Name = atNewName\r\n\t\tschedules.append(schedule)\r\n\r\nnames = []\r\n\r\nif IN[2]:\r\n\tATs = sorted(sorted(sorted(sorted(ATs, key=HasSuffix), key=ByNMark), key=ByNRows), key=ByPrefix)\r\n\tprefixes = set([ByPrefix(at) for at in ATs])\r\n\tfor prefix in prefixes:\r\n\t\tatsOfPrefix = [at for at in ATs if ByPrefix(at) == prefix]\r\n\t\tkeys = []\r\n\t\tfor at in atsOfPrefix:\r\n\t\t\tkey = [ByNMark(at), ByNRows(at)]\r\n\t\t\tif key not in keys:\r\n\t\t\t\tkeys.append(key)\r\n\t\trenamedAtIds = []\r\n\t\tfor i, key in enumerate(keys):\r\n\t\t\tfor at in atsOfPrefix:\r\n\t\t\t\tif at.Id.IntegerValue not in renamedAtIds and ByNMark(at) == key[0] and ByNRows(at) == key[1]:\r\n\t\t\t\t\tatOldName = at.Parameter[BuiltInParameter.ALL_MODEL_TYPE_NAME].AsString()\r\n\t\t\t\t\tatNewName = str(atOldName.split('_')[0] + '_' + prefix + '-' + str(i+1) + GetSuffix(at))\r\n\t\t\t\t\tnames.append(['Было: ' + atOldName, 'Стало: ' + atNewName])\r\n\t\t\t\t\trenamedAtIds.append(at.Id.IntegerValue)\r\n\t\t\t\t\tat.Name = atNewName\r\n\t\t\t\t\r\nTransactionManager.Instance.TransactionTaskDone()\r\n\r\nOUT = names",
+      "Engine": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "b5c90a15256e425eab0f3c424ba3a155",
+      "Inputs": [
+        {
+          "Id": "c600fc7fbf484f01996db90788a7eea4",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "90b6b16a2e8b4df0ba11e37a0860536f",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "4a25325e87dd4603a0bfdad70365925a",
+          "Name": "IN[2]",
+          "Description": "Input #2",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "4fbb0eef32e84aab843463150c4caeb6",
+          "Name": "OUT",
+          "Description": "Результат сценария Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выполнение встроенного сценария Python."
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Symbol, DynamoCore",
+      "NodeType": "InputNode",
+      "Parameter": {
+        "Name": "ATs",
+        "TypeName": "var",
+        "TypeRank": -1,
+        "DefaultValue": null,
+        "Description": "Список типов сборок с арматурными стержнями"
+      },
+      "Id": "4746b42684ab4423a6ceab1cf1bf4988",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "10a0f947211a4f3191f3942aa1fc0759",
+          "Name": "",
+          "Description": "Обозначение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Параметр функции, использовать с пользовательскими узлами.\r\n\r\nМожно указать тип и значение параметра по умолчанию. Например,\r\n\r\nввод: var [], [].\r\nзначение: bool = false"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Symbol, DynamoCore",
+      "NodeType": "InputNode",
+      "Parameter": {
+        "Name": "scheduleTemplateName",
+        "TypeName": "string",
+        "TypeRank": 0,
+        "DefaultValue": null,
+        "Description": "Имя шаблона спецификации"
+      },
+      "Id": "ecd5873cc0e5411ba973df700aa0baff",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "936b886890db48f1bc69e138943f0a02",
+          "Name": "",
+          "Description": "Обозначение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Параметр функции, использовать с пользовательскими узлами.\r\n\r\nМожно указать тип и значение параметра по умолчанию. Например,\r\n\r\nввод: var [], [].\r\nзначение: bool = false"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Output, DynamoCore",
+      "NodeType": "OutputNode",
+      "ElementResolver": null,
+      "Symbol": "//Старые и новые имена сборок (работает в положении IN[2] = True)\r\nnames",
+      "Id": "945eed2a17af4cefa2b240f968fa2b34",
+      "Inputs": [
+        {
+          "Id": "5e278bc8af73411f9ca5f4b45e2a1ae4",
+          "Name": "",
+          "Description": "",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [],
+      "Replication": "Disabled",
+      "Description": "Результат функции, применять с пользовательскими узлами"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Symbol, DynamoCore",
+      "NodeType": "InputNode",
+      "Parameter": {
+        "Name": "modifyNameWithRowCount",
+        "TypeName": "bool",
+        "TypeRank": 0,
+        "DefaultValue": null,
+        "Description": "Переименововать сборку в соответствии с количеством строк в спецификации"
+      },
+      "Id": "3fee753b84b842a09516dce17370be5a",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "7ca2bb0d938b4b538200e0e08cb99402",
+          "Name": "",
+          "Description": "Обозначение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Параметр функции, использовать с пользовательскими узлами.\r\n\r\nМожно указать тип и значение параметра по умолчанию. Например,\r\n\r\nввод: var [], [].\r\nзначение: bool = false"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "4fbb0eef32e84aab843463150c4caeb6",
+      "End": "5e278bc8af73411f9ca5f4b45e2a1ae4",
+      "Id": "bb3d799e76194388b803f667ea428d7c",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "10a0f947211a4f3191f3942aa1fc0759",
+      "End": "c600fc7fbf484f01996db90788a7eea4",
+      "Id": "439bc6bb5ede49f29fad07d0fadf8eb1",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "936b886890db48f1bc69e138943f0a02",
+      "End": "90b6b16a2e8b4df0ba11e37a0860536f",
+      "Id": "cba35fc4b7c848af984c29b9a86ad14a",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "7ca2bb0d938b4b538200e0e08cb99402",
+      "End": "4a25325e87dd4603a0bfdad70365925a",
+      "Id": "b05a97a15b0f4c96b05f41e23be1bac6",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Author": "None provided",
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": false,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.13.1.3887",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Фоновый просмотр",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Name": "Создание спецификаций по сборкам, переименовование сборок",
+        "ShowGeometry": true,
+        "Id": "b5c90a15256e425eab0f3c424ba3a155",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 483.0,
+        "Y": 344.0
+      },
+      {
+        "Name": "Input",
+        "ShowGeometry": true,
+        "Id": "4746b42684ab4423a6ceab1cf1bf4988",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -96.503164980740166,
+        "Y": 233.5076863817975
+      },
+      {
+        "Name": "Input",
+        "ShowGeometry": true,
+        "Id": "ecd5873cc0e5411ba973df700aa0baff",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 26.383982298339674,
+        "Y": 430.79845279343135
+      },
+      {
+        "Name": "Output",
+        "ShowGeometry": true,
+        "Id": "945eed2a17af4cefa2b240f968fa2b34",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1186.2710764143726,
+        "Y": 343.36544342919859
+      },
+      {
+        "Name": "Input",
+        "ShowGeometry": true,
+        "Id": "3fee753b84b842a09516dce17370be5a",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -279.76503064466772,
+        "Y": 613.79214130398782
+      }
+    ],
+    "Annotations": [],
+    "X": 265.39694069834491,
+    "Y": 155.66179220432548,
+    "Zoom": 0.57965394315479113
+  }
+}

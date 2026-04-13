@@ -1,0 +1,721 @@
+{
+  "Uuid": "af926778-2577-4c1a-b148-035bac5482f3",
+  "IsCustomNode": true,
+  "Category": "1П.Чертежи",
+  "Description": "Нанесение марки закладных деталей при оформлении опалубочных чертежей",
+  "Name": "НанесениеМарокЗакладныхДеталей",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "CoreNodeModels.CreateList, CoreNodeModels",
+      "VariableInputPorts": true,
+      "NodeType": "ExtensionNode",
+      "Id": "cae9766425cf48cfab1a4b4fb90f8229",
+      "Inputs": [
+        {
+          "Id": "6db3ecf2ebbb49d9bfb70a44efbe1c48",
+          "Name": "item0",
+          "Description": "Индекс элемента #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "bade22ca6f0848ba8ce6684d049372a5",
+          "Name": "item1",
+          "Description": "Индекс элемента #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "58fa8341a79d4bc6af443fc4a732977d",
+          "Name": "item2",
+          "Description": "Индекс элемента #2",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "28ba6f0f9f60438e929a80c1503fa2b9",
+          "Name": "list",
+          "Description": "Список (тип: var[]..[])",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание нового списка из заданных входных значений"
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\r\nclr.AddReference('System')\r\nfrom System.Collections.Generic import List\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nfrom Autodesk.Revit.DB.Structure import *\r\nclr.AddReference('RevitServices')\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndef GetDirections(emb, view):\r\n\tembDir = emb.GetTransform().BasisZ\r\n\tif embDir.IsAlmostEqualTo(view.ViewDirection) or embDir.IsAlmostEqualTo(-view.ViewDirection):\r\n\t\tdir1 = view.UpDirection\r\n\t\tdir2 = view.RightDirection\r\n\t\tdir3 = -dir2\r\n\telse:\r\n\t\tdir1 = emb.GetTransform().BasisZ\r\n\t\tdir2 = dir1.CrossProduct(view.ViewDirection)\r\n\t\tdir3 = -dir1 if dir1.IsAlmostEqualTo(view.RightDirection) or dir1.IsAlmostEqualTo(-view.RightDirection) else -dir2\r\n\treturn [dir1, dir2, dir3]\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\nviews = UnwrapElement(IN[0])\r\n\r\ntagType = [sym for sym in FilteredElementCollector(doc).OfClass(FamilySymbol).ToElements() if sym.FamilyName == IN[1][0][0] and sym.Parameter[BuiltInParameter.SYMBOL_NAME_PARAM].AsString() == IN[1][0][1]][0]\r\nfilter1 = LogicalAndFilter(ElementClassFilter(FamilyInstance), ElementCategoryFilter(BuiltInCategory.OST_Rebar))\r\nfilter2 = LogicalAndFilter(ElementClassFilter(FamilyInstance), ElementCategoryFilter(BuiltInCategory.OST_GenericModel))\r\ncomFilter = LogicalOrFilter(filter1, filter2)\r\n\t\r\nTransactionManager.Instance.EnsureInTransaction(doc)\r\n\r\nfor view in views:\r\n\tembedments = [elem for elem in FilteredElementCollector(doc, view.Id).WherePasses(comFilter).ToElements() if elem.Symbol.FamilyName.find(IN[1][1]) == 0]\r\n\r\n\tfor emb in embedments:\r\n\t\tdirs = GetDirections(emb, view)\r\n\t\tembLocPoint = emb.Location.Point\r\n\t\t\r\n\t\tinsPoint = embLocPoint + dirs[0]*IN[2][0]/304.8 + dirs[1]*IN[2][1]/304.8\r\n\t\telbowPoint = insPoint + dirs[2]*IN[2][2]/304.8\r\n\t\t\r\n\t\tembRef = Reference(emb)\r\n\t\ttag = IndependentTag.Create(doc, tagType.Id, view.Id, embRef, False, TagOrientation.Horizontal, insPoint)\r\n\t\ttag.HasLeader = True\r\n\t\ttag.LeaderEndCondition = LeaderEndCondition.Attached\r\n\t\t#tag.SetLeaderEnd(embRef, emLocPoint)\r\n\t\ttag.SetLeaderElbow(embRef, elbowPoint)\r\n\r\nTransactionManager.Instance.TransactionTaskDone()\r\n\r\nOUT = ''",
+      "Engine": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "e8c047151bef4fa885577c60d7ba2b5b",
+      "Inputs": [
+        {
+          "Id": "ec8ec221c6d94216aa9d0f3080b7d8ba",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "1d21cd0b6d02421da9eab3c95917565a",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "f633ef2a8abc4ca6b463a8a52021549d",
+          "Name": "IN[2]",
+          "Description": "Input #2",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "7820eabc88e94458ace641e71502c76e",
+          "Name": "OUT",
+          "Description": "Результат сценария Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выполнение встроенного сценария Python."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.CreateList, CoreNodeModels",
+      "VariableInputPorts": true,
+      "NodeType": "ExtensionNode",
+      "Id": "e1faae60d82645b2a30cf0bf16faa06b",
+      "Inputs": [
+        {
+          "Id": "256e1c5a743a489ba0df5eb754948568",
+          "Name": "item0",
+          "Description": "Индекс элемента #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "16040c7404c94a85b31adaec694cb7f4",
+          "Name": "item1",
+          "Description": "Индекс элемента #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "d4b37678d692488fb2699bfbabf6e190",
+          "Name": "list",
+          "Description": "Список (тип: var[]..[])",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание нового списка из заданных входных значений"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleSlider, CoreNodeModels",
+      "NodeType": "NumberInputNode",
+      "NumberType": "Double",
+      "MaximumValue": 1000.0,
+      "MinimumValue": 0.0,
+      "StepValue": 10.0,
+      "InputValue": 400.0,
+      "Id": "df4f229d15894ec2b386c0e246bd7763",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "d9a6cd6e921346d6b892f70e7c820b31",
+          "Name": "",
+          "Description": "Double",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Регулятор, создающий числовые значения."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleSlider, CoreNodeModels",
+      "NodeType": "NumberInputNode",
+      "NumberType": "Double",
+      "MaximumValue": 1000.0,
+      "MinimumValue": 0.0,
+      "StepValue": 10.0,
+      "InputValue": 220.0,
+      "Id": "19f45c7f4f054dcaba6c642da85b2258",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "2c3ae2f1046c446bb14285a948f5b808",
+          "Name": "",
+          "Description": "Double",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Регулятор, создающий числовые значения."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "220_",
+      "Id": "7837b91fd0dd4ad4af13948fbe37aa23",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "1c2352e412bf40d59fd4ad0c0794e68c",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание строки."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleSlider, CoreNodeModels",
+      "NodeType": "NumberInputNode",
+      "NumberType": "Double",
+      "MaximumValue": 1000.0,
+      "MinimumValue": 0.0,
+      "StepValue": 10.0,
+      "InputValue": 200.0,
+      "Id": "8d7c99b0486f46e4b55d8deed0629229",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "2554748f0eca4981b6ffd071b0832613",
+          "Name": "",
+          "Description": "Double",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Регулятор, создающий числовые значения."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.CreateList, CoreNodeModels",
+      "VariableInputPorts": true,
+      "NodeType": "ExtensionNode",
+      "Id": "42c3f1b71d8b4f1f9378627cc8b52e7f",
+      "Inputs": [
+        {
+          "Id": "de4f77b031444922ae690de042284ab1",
+          "Name": "item0",
+          "Description": "Индекс элемента #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "8212d3de29144358af3905a3cad781cd",
+          "Name": "item1",
+          "Description": "Индекс элемента #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "41550710e554434980ad06c0d989f06b",
+          "Name": "list",
+          "Description": "Список (тип: var[]..[])",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание нового списка из заданных входных значений"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "Марка",
+      "Id": "0eeba0c4f2894cf2ad2f1df5855c21c7",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "2d44ef9a2f4d4ef4ab1ac47dd53e58db",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание строки."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "044_М_Изделия (НескКатегорий)",
+      "Id": "7aa1c153b87145b890477890a6d68227",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "164cdd7e6d654a248e8edf43b1770e49",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание строки."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.CreateList, CoreNodeModels",
+      "VariableInputPorts": true,
+      "NodeType": "ExtensionNode",
+      "Id": "b397e08dc189497ab141cd989c310d32",
+      "Inputs": [
+        {
+          "Id": "37b881936a8a48cb9eeb7c3e54d5371d",
+          "Name": "item0",
+          "Description": "Индекс элемента #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "380967b793334bc493c631d8ee5c2453",
+          "Name": "item1",
+          "Description": "Индекс элемента #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "d73062bff9264e989534ef1c682d23b5",
+          "Name": "list",
+          "Description": "Список (тип: var[]..[])",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание нового списка из заданных входных значений"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "040_Общ_Имя типа (ВсеКатегории)",
+      "Id": "ebf6f008d1914d9bb3891eb7ef45ecf2",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "e802f4b666b1455a8d46424505cb9c4a",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание строки."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "С линией",
+      "Id": "8d75db35bded4bfb806865f199040c09",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "e181794b49ad4701bd5ade5d5f54a461",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Создание строки."
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Symbol, DynamoCore",
+      "NodeType": "InputNode",
+      "Parameter": {
+        "Name": "views",
+        "TypeName": "var",
+        "TypeRank": -1,
+        "DefaultValue": null,
+        "Description": "Список видов"
+      },
+      "Id": "156f83a8cd0646d0b6e2d179902189d9",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "0df39136d454420885cb1cdb7c97bfcf",
+          "Name": "",
+          "Description": "Обозначение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Параметр функции, использовать с пользовательскими узлами.\r\n\r\nМожно указать тип и значение параметра по умолчанию. Например,\r\n\r\nввод: var [], [].\r\nзначение: bool = false"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "28ba6f0f9f60438e929a80c1503fa2b9",
+      "End": "f633ef2a8abc4ca6b463a8a52021549d",
+      "Id": "8635ab078d914a1085b1206a0b1d033e",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "d4b37678d692488fb2699bfbabf6e190",
+      "End": "1d21cd0b6d02421da9eab3c95917565a",
+      "Id": "e1d8bfc2f17043768bd65bcc2bb152d3",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "d9a6cd6e921346d6b892f70e7c820b31",
+      "End": "6db3ecf2ebbb49d9bfb70a44efbe1c48",
+      "Id": "4b900212be6e444dad90d72642eca8a8",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "2c3ae2f1046c446bb14285a948f5b808",
+      "End": "bade22ca6f0848ba8ce6684d049372a5",
+      "Id": "24f55474040f49498dcdaadd7bf655ef",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "1c2352e412bf40d59fd4ad0c0794e68c",
+      "End": "16040c7404c94a85b31adaec694cb7f4",
+      "Id": "6e41413dada84f218a7314d13e653259",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "2554748f0eca4981b6ffd071b0832613",
+      "End": "58fa8341a79d4bc6af443fc4a732977d",
+      "Id": "2622a517abf240d383d7de24aded8c9b",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "2d44ef9a2f4d4ef4ab1ac47dd53e58db",
+      "End": "8212d3de29144358af3905a3cad781cd",
+      "Id": "71d4233dbb4a4fb4adaa34e7e30c03c6",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "164cdd7e6d654a248e8edf43b1770e49",
+      "End": "de4f77b031444922ae690de042284ab1",
+      "Id": "c86a7c4919de494ab5de49b7c209ce04",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "d73062bff9264e989534ef1c682d23b5",
+      "End": "256e1c5a743a489ba0df5eb754948568",
+      "Id": "be7483d4ce9d464babf54283fdf83ec8",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "e802f4b666b1455a8d46424505cb9c4a",
+      "End": "37b881936a8a48cb9eeb7c3e54d5371d",
+      "Id": "04baa40e43034a5c9ad726ff1ed3767c",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "e181794b49ad4701bd5ade5d5f54a461",
+      "End": "380967b793334bc493c631d8ee5c2453",
+      "Id": "15cb0de046ff46418636dd64b6e7293f",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "0df39136d454420885cb1cdb7c97bfcf",
+      "End": "ec8ec221c6d94216aa9d0f3080b7d8ba",
+      "Id": "3fc301e85bf742019279d2139bd0839b",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Author": "None provided",
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": false,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.13.1.3887",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Фоновый просмотр",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Name": "Расстояния",
+        "ShowGeometry": true,
+        "Id": "cae9766425cf48cfab1a4b4fb90f8229",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1738.4905623251007,
+        "Y": 616.61581256876138
+      },
+      {
+        "Name": "Нанесение марок закладных деталей",
+        "ShowGeometry": true,
+        "Id": "e8c047151bef4fa885577c60d7ba2b5b",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 2159.4671796717621,
+        "Y": 206.66925352613771
+      },
+      {
+        "Name": "Семейства",
+        "ShowGeometry": true,
+        "Id": "e1faae60d82645b2a30cf0bf16faa06b",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1759.7399609333893,
+        "Y": 235.29704765807651
+      },
+      {
+        "Name": "Смещение от закладной детали ABS",
+        "ShowGeometry": true,
+        "Id": "df4f229d15894ec2b386c0e246bd7763",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1258.2548391986559,
+        "Y": 576.4751924861921
+      },
+      {
+        "Name": "Смещение вбок ABS",
+        "ShowGeometry": true,
+        "Id": "19f45c7f4f054dcaba6c642da85b2258",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1259.4208354849711,
+        "Y": 702.75474967826176
+      },
+      {
+        "Name": "Тип семейства закладных деталей начинается с",
+        "ShowGeometry": true,
+        "Id": "7837b91fd0dd4ad4af13948fbe37aa23",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1120.351425983828,
+        "Y": 378.69196032093123
+      },
+      {
+        "Name": "Смещение \"колена\" ABS",
+        "ShowGeometry": true,
+        "Id": "8d7c99b0486f46e4b55d8deed0629229",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1257.879011018334,
+        "Y": 857.7494453985114
+      },
+      {
+        "Name": "Семейство ОБЩЕЙ марки",
+        "ShowGeometry": true,
+        "Id": "42c3f1b71d8b4f1f9378627cc8b52e7f",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 497.24078448045714,
+        "Y": -149.33940642425569
+      },
+      {
+        "Name": "Тип семейства",
+        "ShowGeometry": true,
+        "Id": "0eeba0c4f2894cf2ad2f1df5855c21c7",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 229.14401085575935,
+        "Y": -50.570384019466815
+      },
+      {
+        "Name": "Имя семейства",
+        "ShowGeometry": true,
+        "Id": "7aa1c153b87145b890477890a6d68227",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 214.58730955231169,
+        "Y": -215.48129103450287
+      },
+      {
+        "Name": "Семейство ОБЩЕЙ марки",
+        "ShowGeometry": true,
+        "Id": "b397e08dc189497ab141cd989c310d32",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1315.782206013806,
+        "Y": 50.324793893396532
+      },
+      {
+        "Name": "Имя семейства",
+        "ShowGeometry": true,
+        "Id": "ebf6f008d1914d9bb3891eb7ef45ecf2",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1028.2431093673308,
+        "Y": -16.192729164910816
+      },
+      {
+        "Name": "Тип семейства",
+        "ShowGeometry": true,
+        "Id": "8d75db35bded4bfb806865f199040c09",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1045.2032835308025,
+        "Y": 145.55397684892068
+      },
+      {
+        "Name": "Input",
+        "ShowGeometry": true,
+        "Id": "156f83a8cd0646d0b6e2d179902189d9",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1735.8102045524802,
+        "Y": -91.411488975167515
+      }
+    ],
+    "Annotations": [
+      {
+        "Id": "3470c01f02a34e41aaed8aea4c5b7726",
+        "Title": "Вариант 2",
+        "DescriptionText": "<Дважды нажмите здесь, чтобы изменить описание группы>",
+        "IsExpanded": true,
+        "WidthAdjustment": 0.0,
+        "HeightAdjustment": 0.0,
+        "Nodes": [
+          "42c3f1b71d8b4f1f9378627cc8b52e7f",
+          "0eeba0c4f2894cf2ad2f1df5855c21c7",
+          "7aa1c153b87145b890477890a6d68227"
+        ],
+        "HasNestedGroups": false,
+        "Left": 204.58730955231169,
+        "Top": -288.48129103450287,
+        "Width": 574.65347492814544,
+        "Height": 369.91090701503606,
+        "FontSize": 36.0,
+        "InitialTop": -215.48129103450287,
+        "InitialHeight": 309.91090701503606,
+        "TextblockHeight": 63.0,
+        "Background": "#FF48B9FF"
+      },
+      {
+        "Id": "c11fb8a69e8740cab8c19f5761c5739c",
+        "Title": "Вариант 1",
+        "DescriptionText": "<Дважды нажмите здесь, чтобы изменить описание группы>",
+        "IsExpanded": true,
+        "WidthAdjustment": 0.0,
+        "HeightAdjustment": 0.0,
+        "Nodes": [
+          "b397e08dc189497ab141cd989c310d32",
+          "ebf6f008d1914d9bb3891eb7ef45ecf2",
+          "8d75db35bded4bfb806865f199040c09"
+        ],
+        "HasNestedGroups": false,
+        "Left": 1018.2431093673308,
+        "Top": -89.192729164910816,
+        "Width": 579.53909664647517,
+        "Height": 366.7467060138315,
+        "FontSize": 36.0,
+        "InitialTop": -16.192729164910816,
+        "InitialHeight": 306.7467060138315,
+        "TextblockHeight": 63.0,
+        "Background": "#FF48B9FF"
+      }
+    ],
+    "X": 35.139289419010311,
+    "Y": 341.14320817911539,
+    "Zoom": 0.47799973494454162
+  }
+}

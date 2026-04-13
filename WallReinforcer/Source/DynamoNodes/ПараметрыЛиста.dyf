@@ -1,0 +1,290 @@
+{
+  "Uuid": "9a85c53b-35a1-4b59-8f5a-ed167f3421fe",
+  "IsCustomNode": true,
+  "Category": "1П.Кэширование",
+  "Description": "Сведения и методы, связанные с листами в активном документе",
+  "Name": "ПараметрыЛиста",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Function, DynamoCore",
+      "FunctionSignature": "1e560bd5-4eb0-468b-9cc9-6403691af6b5",
+      "FunctionType": "Graph",
+      "NodeType": "FunctionNode",
+      "Id": "e5e2a47d43dd4f7495713ac65fc76001",
+      "Inputs": [
+        {
+          "Id": "002646bbd89f45328d08cd6f869fe6be",
+          "Name": "views",
+          "Description": "Список видов\n\nvar[]..[]",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "f483fc27b4b747f8907f98b3353999af",
+          "Name": "VPs",
+          "Description": "Список параметров видов",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Auto",
+      "Description": "Сбор исходных данных, свзяанных с видами"
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import sys\r\nimport clr\r\nimport math\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nfrom Autodesk.Revit.DB.Structure import *\r\nclr.AddReference('RevitServices')\r\nfrom RevitServices.Persistence import DocumentManager\r\n\r\ndef ByMark(vp):\r\n#\tmainElement = None\r\n#\tif vp.Name.find('К-') != -1:\r\n#\t\tmainElement = vp.GetMainElementFromView(vp.Collectors.Columns.ToElements())\t\t\t\r\n#\telif vp.Name.find('Стм-') != -1 or vp.Name.find('Дм-') != -1:\r\n#\t\tmainElement = vp.GetMainElementFromView(vp.Collectors.Walls.ToElements())\r\n\tmainElement = vp.GetMainElementFromView(vp.Collectors.Union.ToElements())\r\n\tif mainElement and mainElement.Parameter[BuiltInParameter.ALL_MODEL_MARK].HasValue:\t\r\n\t\tvp.ElemMark = mainElement.Parameter[BuiltInParameter.ALL_MODEL_MARK].AsString()\t\r\n\treturn vp.ElemMark\r\n\t\t\r\nclass SheetParameters:\r\n\tdef __init__(self, sheet):\r\n\t\tself.Sheet = sheet\r\n\t\tself.Name = sheet.Name\r\n\t\tself.Width = sheet.Outline.Max.U - sheet.Outline.Min.U\r\n\t\tself.Viewports = [doc.GetElement(id) for id in sheet.GetAllViewports()]\r\n\t\tself.ViewPars = sorted([vp for vp in allVPars if vp.ViewportSheetName == self.Name], key=ByMark)\r\n\t\tself.ViewConcretePars = [vp for vp in self.ViewPars if (vp.Name.find('Опалубочные чертежи') != -1 or vp.Name.find('Опалубочный чертеж') != -1) and vp.Name.find('ечение') == -1 and vp.Name.find('горизонтальное') == -1 and vp.Name.find('Вид') == -1 and vp.Name.find('расположения') == -1 and vp.Name.find('Обрамление') == -1 and vp.Name.find('рагмент') == -1 and vp.Name.find('азрез') == -1]\r\n\t\tself.AI = None\r\n\t\tself.ElemMarksString = ', '.join([vp.ElemMark for vp in self.ViewConcretePars])\r\n\t\tself.SimpleRebarPars = []\r\n\t\tself.SheetSetName = sheet.Parameter[BuiltInParameter.SHEET_NUMBER].AsString().split('-')[0]\r\n\t\tself.Schedules = []\r\n\t\t\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\nsheets = UnwrapElement(IN[0])\r\nallVPars = IN[1]\r\n\r\nSPars = [SheetParameters(sheet) for sheet in sheets]\r\n\r\nOUT = SPars",
+      "Engine": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "9cf466aeba69464a9b54de9601fcf739",
+      "Inputs": [
+        {
+          "Id": "3f0fd9ebbefb48a79eec6c8960fae0ab",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "114d855123ad4214b8db9e74ff3262ab",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "40b3b431fadf45139c8c9cab3aab199d",
+          "Name": "OUT",
+          "Description": "Результат сценария Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выполнение встроенного сценария Python."
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Symbol, DynamoCore",
+      "NodeType": "InputNode",
+      "Parameter": {
+        "Name": "sheets",
+        "TypeName": "var",
+        "TypeRank": -1,
+        "DefaultValue": null,
+        "Description": "Список листов"
+      },
+      "Id": "9b45eee051e24bf09770ed07044d5605",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "e380b16a00564e7aa958be0971c03853",
+          "Name": "",
+          "Description": "Обозначение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Параметр функции, использовать с пользовательскими узлами.\r\n\r\nМожно указать тип и значение параметра по умолчанию. Например,\r\n\r\nввод: var [], [].\r\nзначение: bool = false"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Output, DynamoCore",
+      "NodeType": "OutputNode",
+      "ElementResolver": null,
+      "Symbol": "//Список параметров листов\r\nSPars",
+      "Id": "6655ab24a161442ba44b458966dc5da1",
+      "Inputs": [
+        {
+          "Id": "6601f8230fa64d419483898d64ba2864",
+          "Name": "",
+          "Description": "",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [],
+      "Replication": "Disabled",
+      "Description": "Результат функции, применять с пользовательскими узлами"
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nclr.AddReference('RevitServices')\r\nfrom RevitServices.Persistence import DocumentManager\r\n\t\t\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\nsheets = UnwrapElement(IN[0])\r\n\r\nviews = []\r\nfor sheet in sheets:\r\n\tviewports = [doc.GetElement(id) for id in sheet.GetAllViewports()]\r\n\tviews += [doc.GetElement(vp.ViewId) for vp in viewports]\r\n\r\nOUT = views",
+      "Engine": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "23bf47586fcb4192acd70887ee4d7c5f",
+      "Inputs": [
+        {
+          "Id": "317bce01ef9e48259d4fef08341529f8",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "d43296ef44164d23951efcc1e6991e1b",
+          "Name": "OUT",
+          "Description": "Результат сценария Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выполнение встроенного сценария Python."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "f483fc27b4b747f8907f98b3353999af",
+      "End": "114d855123ad4214b8db9e74ff3262ab",
+      "Id": "93979a28bbfb42b2a0f1ee075354bedf",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "40b3b431fadf45139c8c9cab3aab199d",
+      "End": "6601f8230fa64d419483898d64ba2864",
+      "Id": "602f595dc36e4630afad7f11519bce59",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "e380b16a00564e7aa958be0971c03853",
+      "End": "3f0fd9ebbefb48a79eec6c8960fae0ab",
+      "Id": "61d971757d974701b5b49f34fdf88e4b",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "e380b16a00564e7aa958be0971c03853",
+      "End": "317bce01ef9e48259d4fef08341529f8",
+      "Id": "6832aa9063574a69a499b2dd43a1e447",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "d43296ef44164d23951efcc1e6991e1b",
+      "End": "002646bbd89f45328d08cd6f869fe6be",
+      "Id": "0b96d3c92b7a4e56aa0df06e73165e33",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [
+    "1e560bd5-4eb0-468b-9cc9-6403691af6b5"
+  ],
+  "NodeLibraryDependencies": [
+    {
+      "Name": "ПараметрыВида.dyf",
+      "ReferenceType": "DYFFile",
+      "Nodes": [
+        "e5e2a47d43dd4f7495713ac65fc76001"
+      ]
+    }
+  ],
+  "Author": "None provided",
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": false,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.13.1.3887",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Фоновый просмотр",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Name": "ПараметрыВида",
+        "ShowGeometry": true,
+        "Id": "e5e2a47d43dd4f7495713ac65fc76001",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 32.220551989496244,
+        "Y": 580.60132195522294
+      },
+      {
+        "Name": "Сбор исходных данных листов",
+        "ShowGeometry": true,
+        "Id": "9cf466aeba69464a9b54de9601fcf739",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 307.6083023729891,
+        "Y": 356.52277910992365
+      },
+      {
+        "Name": "Input",
+        "ShowGeometry": true,
+        "Id": "9b45eee051e24bf09770ed07044d5605",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -691.47194111612328,
+        "Y": 349.82288687841958
+      },
+      {
+        "Name": "Output",
+        "ShowGeometry": true,
+        "Id": "6655ab24a161442ba44b458966dc5da1",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 740.45043373897988,
+        "Y": 362.593432582931
+      },
+      {
+        "Name": "Извлечение видов с листов",
+        "ShowGeometry": true,
+        "Id": "23bf47586fcb4192acd70887ee4d7c5f",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -355.45706452984052,
+        "Y": 577.480161019043
+      }
+    ],
+    "Annotations": [],
+    "X": 430.31628180046323,
+    "Y": -316.8517410088034,
+    "Zoom": 1.1443598622964724
+  }
+}

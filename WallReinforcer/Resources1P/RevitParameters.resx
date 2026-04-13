@@ -1,0 +1,402 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="pp_BClass" xml:space="preserve">
+    <value>1Пп_Класс бетона</value>
+    <comment>Вводные для армирования железобетонных элементов</comment>
+  </data>
+  <data name="pp_Container_Name" xml:space="preserve">
+    <value>1Пп_Наименование контейнера</value>
+    <comment>Наименование арматурного контейнера</comment>
+  </data>
+  <data name="pp_Container_SheetReference" xml:space="preserve">
+    <value>1Пп_Обозначение контейнера</value>
+    <comment>Обозначение арматурного контейнера</comment>
+  </data>
+  <data name="pp_Decor_Ceiling_Area" xml:space="preserve">
+    <value>1Пп_Отделка потолка_Площадь</value>
+    <comment>Площадь отделки потолка</comment>
+  </data>
+  <data name="pp_Decor_Floor_Area" xml:space="preserve">
+    <value>1Пп_Отделка пола_Площадь</value>
+    <comment>Площадь отделки пола</comment>
+  </data>
+  <data name="pp_Decor_Floor_MinT" xml:space="preserve">
+    <value>1Пп_Отделка пола_Минимальная толщина</value>
+    <comment>Минимальная толщина отделки пола</comment>
+  </data>
+  <data name="pp_Decor_Wall_Area1" xml:space="preserve">
+    <value>1Пп_Отделка стен_Площадь1</value>
+    <comment>Площадь отделки стен 1</comment>
+  </data>
+  <data name="pp_Decor_Wall_Area2" xml:space="preserve">
+    <value>1Пп_Отделка стен_Площадь2</value>
+    <comment>Площадь отделки стен 2</comment>
+  </data>
+  <data name="pp_Decor_Wall_Area3" xml:space="preserve">
+    <value>1Пп_Отделка стен_Площадь3</value>
+    <comment>Площадь отделки стен 3</comment>
+  </data>
+  <data name="pp_Decor_Wall_Area4" xml:space="preserve">
+    <value>1Пп_Отделка стен_Площадь4</value>
+    <comment>Площадь отделки стен 4</comment>
+  </data>
+  <data name="pp_Decor_Wall_Area5" xml:space="preserve">
+    <value>1Пп_Отделка стен_Площадь5</value>
+    <comment>Площадь отделки стен 5</comment>
+  </data>
+  <data name="pp_Decor_Wall_Description1" xml:space="preserve">
+    <value>1Пп_Отделка стен_Описание1</value>
+    <comment>Описание отделки стен 1</comment>
+  </data>
+  <data name="pp_Decor_Wall_Description2" xml:space="preserve">
+    <value>1Пп_Отделка стен_Описание2</value>
+    <comment>Описание отделки стен 2</comment>
+  </data>
+  <data name="pp_Decor_Wall_Description3" xml:space="preserve">
+    <value>1Пп_Отделка стен_Описание3</value>
+    <comment>Описание отделки стен 3</comment>
+  </data>
+  <data name="pp_Decor_Wall_Description4" xml:space="preserve">
+    <value>1Пп_Отделка стен_Описание4</value>
+    <comment>Описание отделки стен 4</comment>
+  </data>
+  <data name="pp_Decor_Wall_Description5" xml:space="preserve">
+    <value>1Пп_Отделка стен_Описание5</value>
+    <comment>Описание отделки стен 5</comment>
+  </data>
+  <data name="pp_Decor_Wall_MinT" xml:space="preserve">
+    <value>1Пп_Отделка стен_Минимальная толщина</value>
+    <comment>Минимальная толщина отделки стен</comment>
+  </data>
+  <data name="pp_Name" xml:space="preserve">
+    <value>1Пп_Наименование</value>
+    <comment>Наименование</comment>
+  </data>
+  <data name="pp_Number_OfCol" xml:space="preserve">
+    <value>1Пп_Номер столбца</value>
+    <comment>Номер столбца для групповых спецификаций</comment>
+  </data>
+  <data name="pp_Number_OfLevel" xml:space="preserve">
+    <value>1Пп_Номер этажа</value>
+    <comment>Номер этажа (с воможностью изменения по группам)</comment>
+  </data>
+  <data name="pp_Reinf_AddBottom_D" xml:space="preserve">
+    <value>1Пп_Арм_Доп_Низ_Диаметр</value>
+    <comment>Каркас несущий, Фундамент</comment>
+  </data>
+  <data name="pp_Reinf_AddTop_D" xml:space="preserve">
+    <value>1Пп_Арм_Доп_Верх_Диаметр</value>
+    <comment>Каркас несущий, Фундамент</comment>
+  </data>
+  <data name="pp_Reinf_AsCantilever" xml:space="preserve">
+    <value>1Пп_Арм_Консоль</value>
+    <comment>Каркас несущий</comment>
+  </data>
+  <data name="pp_Reinf_Cage_D" xml:space="preserve">
+    <value>1Пп_Арм_Каркас_Диаметр</value>
+    <comment>Стены</comment>
+  </data>
+  <data name="pp_Reinf_Edge_D" xml:space="preserve">
+    <value>1Пп_Арм_Торец_Диаметр</value>
+    <comment>Стены</comment>
+  </data>
+  <data name="pp_Reinf_MaxBottom_D" xml:space="preserve">
+    <value>1Пп_Арм_Max_Низ_Диаметр</value>
+    <comment>Перекрытия, Фундамент</comment>
+  </data>
+  <data name="pp_Reinf_MaxTop_D" xml:space="preserve">
+    <value>1Пп_Арм_Max_Верх_Диаметр</value>
+    <comment>Перекрытия, Фундамент</comment>
+  </data>
+  <data name="pp_Reinf_XBottom_D" xml:space="preserve">
+    <value>1Пп_Арм_X_Низ_Диаметр</value>
+    <comment>Перекрытия, Каркас несущий, Фундамент</comment>
+  </data>
+  <data name="pp_Reinf_XTop_D" xml:space="preserve">
+    <value>1Пп_Арм_X_Верх_Диаметр</value>
+    <comment>Перекрытия, Каркас несущий, Фундамент</comment>
+  </data>
+  <data name="pp_Reinf_X_D" xml:space="preserve">
+    <value>1Пп_Арм_X_Диаметр</value>
+    <comment>Стены, Окна, Двери</comment>
+  </data>
+  <data name="pp_Reinf_X_N" xml:space="preserve">
+    <value>1Пп_Арм_X_Количество</value>
+    <comment>Каркас несущий, Фундамент, Окна, Двери</comment>
+  </data>
+  <data name="pp_Reinf_X_Step" xml:space="preserve">
+    <value>1Пп_Арм_X_Шаг</value>
+    <comment>Стены, Перекрытия, Фундамент, Окна, Двери</comment>
+  </data>
+  <data name="pp_Reinf_YBottom_D" xml:space="preserve">
+    <value>1Пп_Арм_Y_Низ_Диаметр</value>
+    <comment>Перекрытия, Фундамент</comment>
+  </data>
+  <data name="pp_Reinf_YTop_D" xml:space="preserve">
+    <value>1Пп_Арм_Y_Верх_Диаметр</value>
+    <comment>Перекрытия, Фундамент</comment>
+  </data>
+  <data name="pp_Reinf_Y_D" xml:space="preserve">
+    <value>1Пп_Арм_Y_Диаметр</value>
+    <comment>Стены, Несущие колонны, Окна, Двери</comment>
+  </data>
+  <data name="pp_Reinf_Y_N" xml:space="preserve">
+    <value>1Пп_Арм_Y_Количество</value>
+    <comment>Несущие колонны, Окна, Двери</comment>
+  </data>
+  <data name="pp_Reinf_Y_Step" xml:space="preserve">
+    <value>1Пп_Арм_Y_Шаг</value>
+    <comment>Стены, Перекрытия, Фундамент, Окна, Двери</comment>
+  </data>
+  <data name="pp_SheetReference" xml:space="preserve">
+    <value>1Пп_Обозначение</value>
+    <comment>Обозначение</comment>
+  </data>
+  <data name="pp_StandartItem" xml:space="preserve">
+    <value>1Пп_Эталон</value>
+    <comment>Эталон</comment>
+  </data>
+  <data name="p_Amount" xml:space="preserve">
+    <value>8d057bb3-6ccd-4655-9165-55526691fe3a</value>
+    <comment>Количество</comment>
+  </data>
+  <data name="p_Dims_Diameter" xml:space="preserve">
+    <value>9b679ab7-ea2e-49ce-90ab-0549d5aa36ff</value>
+    <comment>Размер. Диаметр</comment>
+  </data>
+  <data name="p_Dims_Elevation" xml:space="preserve">
+    <value>6ca8be7d-c26e-4287-bef4-a95cbbccfe39</value>
+    <comment>Размер. Отметка расположения</comment>
+  </data>
+  <data name="p_Dims_Height" xml:space="preserve">
+    <value>da753fe3-ecfa-465b-9a2c-02f55d0c2ff1</value>
+    <comment>Размер. Высота</comment>
+  </data>
+  <data name="p_Dims_InRunningMeters" xml:space="preserve">
+    <value>844a01e2-19fc-4dc5-baa0-a4bda30ef1f6</value>
+    <comment>Размер. В погонных метрах</comment>
+  </data>
+  <data name="p_Dims_Length" xml:space="preserve">
+    <value>748a2515-4cc9-4b74-9a69-339a8d65a212</value>
+    <comment>Размер. Длина</comment>
+  </data>
+  <data name="p_Dims_Thickness" xml:space="preserve">
+    <value>293f055d-6939-4611-87b7-9a50d0c1f50e</value>
+    <comment>Размер. Толщина</comment>
+  </data>
+  <data name="p_Dims_Width" xml:space="preserve">
+    <value>8f2e4f93-9472-4941-a65d-0ac468fd6a5d</value>
+    <comment>Размер. Ширина</comment>
+  </data>
+  <data name="p_Identity_Level" xml:space="preserve">
+    <value>9eabf56c-a6cd-4b5c-a9d0-e9223e19ea3f</value>
+    <comment>Этаж</comment>
+  </data>
+  <data name="p_Identity_MainElement" xml:space="preserve">
+    <value>7b011a82-6ead-45ee-a188-7a7721dfb452</value>
+    <comment>Главная деталь</comment>
+  </data>
+  <data name="p_Identity_Name" xml:space="preserve">
+    <value>e6e0f5cd-3e26-485b-9342-23882b20eb43</value>
+    <comment>Наименование</comment>
+  </data>
+  <data name="p_Identity_Number_OfPile" xml:space="preserve">
+    <value>8d2d9fad-1799-4428-8724-3354c4183462</value>
+    <comment>Номер сваи</comment>
+  </data>
+  <data name="p_Identity_Section" xml:space="preserve">
+    <value>c5cd7b89-b2f0-45c4-98ba-0323ed9b25f9</value>
+    <comment>Блок</comment>
+  </data>
+  <data name="p_Identity_SheetReference" xml:space="preserve">
+    <value>9c98831b-9450-412d-b072-7d69b39f4029</value>
+    <comment>Обозначение</comment>
+  </data>
+  <data name="p_Identity_Zone" xml:space="preserve">
+    <value>c78f0a7d-b68b-4d21-a247-1c8c6ced8bc5</value>
+    <comment>Зона</comment>
+  </data>
+  <data name="p_Mark_Complicate_Length1" xml:space="preserve">
+    <value>476aa446-b9ab-4f3c-99ea-7d2740b0ed8b</value>
+    <comment>Маркировка составная. Длина 1</comment>
+  </data>
+  <data name="p_Mark_Complicate_Length2" xml:space="preserve">
+    <value>2b1c2c3f-123d-4b25-8096-86b8bb920ce1</value>
+    <comment>Маркировка составная. Длина 2</comment>
+  </data>
+  <data name="p_Mark_Complicate_Length3" xml:space="preserve">
+    <value>810c026d-79ed-4f10-b45e-5db312ae43bb</value>
+    <comment>Маркировка составная. Длина 3</comment>
+  </data>
+  <data name="p_Mark_Complicate_Text1" xml:space="preserve">
+    <value>3601a2b2-2cdc-4e35-bb35-1de1737c45a8</value>
+  </data>
+  <data name="p_Mark_Complicate_Text2" xml:space="preserve">
+    <value>e6e4bdf9-cec1-4b4d-8a08-89aa2f668931</value>
+  </data>
+  <data name="p_Mark_Construction" xml:space="preserve">
+    <value>5d369dfb-17a2-4ae2-a1a1-bdfc33ba7405</value>
+    <comment>Марка конструкции</comment>
+  </data>
+  <data name="p_Mark_Item" xml:space="preserve">
+    <value>92ae0425-031b-40a9-8904-023f7389963b</value>
+    <comment>Марка изделия</comment>
+  </data>
+  <data name="p_Mark_Void" xml:space="preserve">
+    <value>01b0db9a-3ed0-4957-98c2-7bbaf81892cb</value>
+    <comment>Марка проема</comment>
+  </data>
+  <data name="p_Mass" xml:space="preserve">
+    <value>32989501-0d17-4916-8777-da950841c6d7</value>
+    <comment>Масса</comment>
+  </data>
+  <data name="p_Material" xml:space="preserve">
+    <value>8b5e61a2-b091-491c-8092-0b01a55d4f44</value>
+    <comment>Материал</comment>
+  </data>
+  <data name="p_Reinf_A" xml:space="preserve">
+    <value>b5ef18b4-453e-49bd-b26c-dfb3bd3ca79c</value>
+    <comment>Арм. Размер А</comment>
+  </data>
+  <data name="p_Reinf_B" xml:space="preserve">
+    <value>bef64550-0992-4b59-a616-1acaa2e24065</value>
+    <comment>Арм. Размер Б</comment>
+  </data>
+  <data name="p_Reinf_Class" xml:space="preserve">
+    <value>32a47c7f-e91d-4a8e-bf24-927cb679b4d1</value>
+    <comment>Арм. Класс</comment>
+  </data>
+  <data name="p_Reinf_Prefix" xml:space="preserve">
+    <value>dce379c0-5e32-4695-b16a-d76ef0100172</value>
+    <comment>Арм. Префикс формы</comment>
+  </data>
+  <data name="p_Reinf_V" xml:space="preserve">
+    <value>4d1d1719-6bd9-4357-9378-a1d77871e0fd</value>
+    <comment>Арм. Размер В</comment>
+  </data>
+  <data name="p_TitleBlock_SheetNumber" xml:space="preserve">
+    <value>b6e73342-b6cd-42c5-86c5-64b04b5b88de</value>
+    <comment>Штамп. Номер листа</comment>
+  </data>
+  <data name="p_TitleBlock_SheetSet" xml:space="preserve">
+    <value>7f0c8590-53a2-4ddf-aaed-c70eb9b687bc</value>
+    <comment>Штамп. Раздел проекта</comment>
+  </data>
+</root>

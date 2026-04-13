@@ -1,0 +1,184 @@
+{
+  "Uuid": "5a3f7075-e592-4b46-973a-1d0846bc9fa0",
+  "IsCustomNode": true,
+  "Category": "1П.Армирование",
+  "Description": "Корректирует защитные слои для железобетонных элементов по заданным значениям",
+  "Name": "КорректировкаЗащитногоСлоя",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nfrom Autodesk.Revit.DB.Structure import *\r\nclr.AddReference('RevitServices')\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndef GetRebarCoverType(dst):\r\n\tfor rct in FilteredElementCollector(doc).OfClass(RebarCoverType).ToElements():\r\n\t\tif round(rct.CoverDistance*304.8) == dst:\r\n\t\t\treturn rct\r\n\telse:\r\n\t\treturn RebarCoverType.Create(doc, str(int(round(dst))), dst/304.8)\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\nelems = UnwrapElement(IN[0])\r\n\r\nparName = [BuiltInParameter.CLEAR_COVER, BuiltInParameter.CLEAR_COVER_BOTTOM, BuiltInParameter.CLEAR_COVER_TOP, BuiltInParameter.CLEAR_COVER_OTHER, BuiltInParameter.CLEAR_COVER_INTERIOR, BuiltInParameter.CLEAR_COVER_EXTERIOR]\r\n\r\nTransactionManager.Instance.EnsureInTransaction(doc)\r\n\r\nfor elem in elems:\r\n\tfor i in range(6):\r\n\t\tcovType = GetRebarCoverType(IN[1][i])\r\n\t\tif elem.Parameter[parName[i]] and not elem.Parameter[parName[i]].IsReadOnly:\r\n\t\t\telem.Parameter[parName[i]].Set(covType.Id)\r\n\r\nTransactionManager.Instance.TransactionTaskDone()\r\n\r\nOUT = ''",
+      "Engine": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "77fddf683c4547278a47d8cd2193a724",
+      "Inputs": [
+        {
+          "Id": "6b74926027d342f0976526d076c4ba51",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "2497a6c14f2f4dc4b98dd2126fdb3bb1",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "5e9f5363a7bb4cc6b85077aeaafbadef",
+          "Name": "OUT",
+          "Description": "Результат сценария Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выполнение встроенного сценария Python."
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Symbol, DynamoCore",
+      "NodeType": "InputNode",
+      "Parameter": {
+        "Name": "concreteElems",
+        "TypeName": "var",
+        "TypeRank": -1,
+        "DefaultValue": null,
+        "Description": "Список железобетонных элементов"
+      },
+      "Id": "4feb4ac7044544c28c7fdd993950b65f",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "dc393524ba6b4f5e962aa39840ec6f5c",
+          "Name": "",
+          "Description": "Обозначение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Параметр функции, использовать с пользовательскими узлами.\r\n\r\nМожно указать тип и значение параметра по умолчанию. Например,\r\n\r\nввод: var [], [].\r\nзначение: bool = false"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Symbol, DynamoCore",
+      "NodeType": "InputNode",
+      "Parameter": {
+        "Name": "rebarCoverDistances",
+        "TypeName": "var",
+        "TypeRank": -1,
+        "DefaultValue": "[0, 0, 0, 0, 0, 0]",
+        "Description": "Список расстояний, включающий в себя:\n0. Единый защитный слой\n1. Защитный слой от верхней грани\n2. Защитный слой от нижней грани\n3. Защитный слой от других граней\n4. Защитный слой от внутренней грани\n5. Защитный слой от наружной грани"
+      },
+      "Id": "b6f900dc5a6340eb8e10ac3b834a4e90",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "376bc9371ac24c048f7db6fd6f244edb",
+          "Name": "",
+          "Description": "Обозначение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Параметр функции, использовать с пользовательскими узлами.\r\n\r\nМожно указать тип и значение параметра по умолчанию. Например,\r\n\r\nввод: var [], [].\r\nзначение: bool = false"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "dc393524ba6b4f5e962aa39840ec6f5c",
+      "End": "6b74926027d342f0976526d076c4ba51",
+      "Id": "4cc8630637ab4165b571097b1129fe45",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "376bc9371ac24c048f7db6fd6f244edb",
+      "End": "2497a6c14f2f4dc4b98dd2126fdb3bb1",
+      "Id": "3943a75d525e4ae1b9bb3d28d9b9007a",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Author": "None provided",
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": false,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.13.1.3887",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Фоновый просмотр",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Name": "Редактирование защитного слоя",
+        "ShowGeometry": true,
+        "Id": "77fddf683c4547278a47d8cd2193a724",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 222.20301473580651,
+        "Y": -0.92656617547311271
+      },
+      {
+        "Name": "Input",
+        "ShowGeometry": true,
+        "Id": "4feb4ac7044544c28c7fdd993950b65f",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -252.95256590416051,
+        "Y": -105.88175377136352
+      },
+      {
+        "Name": "Input",
+        "ShowGeometry": true,
+        "Id": "b6f900dc5a6340eb8e10ac3b834a4e90",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -320.61464967199112,
+        "Y": 143.72192735286828
+      }
+    ],
+    "Annotations": [],
+    "X": 632.31634622260242,
+    "Y": 154.0125448243648,
+    "Zoom": 1.2852827688530046
+  }
+}

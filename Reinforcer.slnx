@@ -1,0 +1,17 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="2020" />
+    <BuildType Name="2021" />
+    <BuildType Name="2022" />
+    <BuildType Name="2023" />
+    <BuildType Name="2024" />
+    <BuildType Name="2025" />
+    <BuildType Name="Debug 2020" />
+    <BuildType Name="Debug 2021" />
+    <BuildType Name="Debug 2022" />
+    <BuildType Name="Debug 2023" />
+    <BuildType Name="Debug 2024" />
+    <BuildType Name="Debug 2025" />
+  </Configurations>
+  <Project Path="WallReinforcer/WallReinforcer.csproj" />
+</Solution>

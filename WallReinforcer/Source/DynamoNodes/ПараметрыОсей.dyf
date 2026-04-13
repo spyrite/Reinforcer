@@ -1,0 +1,170 @@
+{
+  "Uuid": "e730a5d0-e4e6-45ea-b8a8-a74fc8d73dd0",
+  "IsCustomNode": true,
+  "Category": "1П.Кэширование",
+  "Description": "Сведения и методы, связанные со строительными осями",
+  "Name": "ПараметрыОсей",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Symbol, DynamoCore",
+      "NodeType": "InputNode",
+      "Parameter": {
+        "Name": "gridSets",
+        "TypeName": "var",
+        "TypeRank": -1,
+        "DefaultValue": null,
+        "Description": "Список наборов строительных осей (по списку видов)"
+      },
+      "Id": "d02a3001a5fa49d08901fe336fd3bc10",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "f9ae0de985cb48f8b3c538c1a533742e",
+          "Name": "",
+          "Description": "Обозначение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Параметр функции, использовать с пользовательскими узлами.\r\n\r\nМожно указать тип и значение параметра по умолчанию. Например,\r\n\r\nввод: var [], [].\r\nзначение: bool = false"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Output, DynamoCore",
+      "NodeType": "OutputNode",
+      "ElementResolver": null,
+      "Symbol": "gridParameterSets",
+      "Id": "6f3646ce9b0944ea80b7b389b0ee4f5c",
+      "Inputs": [
+        {
+          "Id": "975dabac28f146308ae014194ab883e7",
+          "Name": "",
+          "Description": "",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [],
+      "Replication": "Disabled",
+      "Description": "Результат функции, применять с пользовательскими узлами"
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\r\nclr.AddReference('System')\r\nfrom System.Collections.Generic import List\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nclr.AddReference('RevitServices')\r\nfrom RevitServices.Persistence import DocumentManager\r\n\r\nclass GridParameters:\r\n\tdef __init__(self, grid):\r\n\t\tself.Grid = grid\r\n\t\tself.View = None\r\n\t\tself.Names = [grid.Name]\r\n\t\tself.Lines = [grid.Curve, None]\r\n\t\tself.Centers = [self.Lines[0].Evaluate(0.5, True), None]\r\n\t\tself.Origin = self.Lines[0].Origin\r\n\t\tself.Directions = [self.Lines[0].Direction, self.Lines[0].Direction.CrossProduct(XYZ.BasisZ), XYZ.BasisZ]\r\n\t\tself.Plane = Plane.CreateByOriginAndBasis(self.Origin, self.Directions[0], self.Directions[2])\r\n\t\tself.HasBubbles = [None, None]\r\n\t\tself.RayWhereGridHasBeenCatchedDir = None\r\n\t\t\t\r\n\tdef GetNearGridPars(self):\r\n\t\tnearGPs = [None, None]\r\n\t\tcollector = FilteredElementCollector(doc).OfClass(Grid)\r\n\t\totherGPs = [GridParameters(grid) for grid in collector.Excluding(List[ElementId]([self.Grid.Id])).ToElements() if grid.Curve.Direction.IsAlmostEqualTo(self.Grid.Curve.Direction) or grid.Curve.Direction.IsAlmostEqualTo(-self.Grid.Curve.Direction)]\r\n\t\t\r\n\t\tplanes = [gp.Plane for gp in otherGPs]\r\n\t\tpoints = [(plane.Origin + plane.XVec*plane.Project(self.Centers[0])[0].U + plane.YVec*plane.Project(self.Centers[0])[0].V) for plane in planes]\r\n\t\tdirs = [self.Directions[1]*token for token in [-1, 1]]\r\n\t\trays = [Line.CreateBound(self.Centers[0], self.Centers[0] + 100000*dir) for dir in dirs]\r\n\t\tfor i in range(2):\r\n\t\t\tprojectPars = [round(rays[i].Project(point).Parameter, 5) for point in points]\r\n\t\t\tdsts = [dst for dst in projectPars if dst > 0]\r\n\t\t\tif dsts:\r\n\t\t\t\tnearGPs[i] = otherGPs[projectPars.index(min(dsts))]\r\n\t\t\t\tnearGPs[i].RayWhereGridHasBeenCatchedDir = rays[i].Direction.Normalize()\r\n\t\treturn nearGPs\r\n\t\r\n\tdef UpdateViewGeometrics(self, view):\r\n\t\topt.View = view\r\n\t\tself.View = view\r\n\t\tself.Lines[-1] = list(self.Grid.Geometry[opt])[0]\r\n\t\tself.Centers[-1] = self.Lines[-1].Evaluate(0.5, True)\r\n\t\tself.HasBubbles = [self.Grid.IsBubbleVisibleInView(de, view) for de in [DatumEnds.End0, DatumEnds.End1]]\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\nopt = Options()\r\ngridSets = UnwrapElement(IN[0])\r\n\r\nGPSets = [[GridParameters(grid) for grid in gridSet] for gridSet in gridSets]\r\n\r\nOUT = GPSets",
+      "Engine": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "62f2b8e0afc34cf4ba50de0fcbbe2d0b",
+      "Inputs": [
+        {
+          "Id": "460e2f293779415fab9482db608f9094",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "88abcfa2c5474e0c8ae6004d481d4938",
+          "Name": "OUT",
+          "Description": "Результат сценария Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выполнение встроенного сценария Python."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "f9ae0de985cb48f8b3c538c1a533742e",
+      "End": "460e2f293779415fab9482db608f9094",
+      "Id": "3fad8aa0b6d74cd1a6d4b3930d7457f1",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "88abcfa2c5474e0c8ae6004d481d4938",
+      "End": "975dabac28f146308ae014194ab883e7",
+      "Id": "36a085f0c1bb4afb873e5c25527c915e",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Author": "None provided",
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": false,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.13.1.3887",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Фоновый просмотр",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Name": "Input",
+        "ShowGeometry": true,
+        "Id": "d02a3001a5fa49d08901fe336fd3bc10",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -93.0,
+        "Y": 280.0
+      },
+      {
+        "Name": "Output",
+        "ShowGeometry": true,
+        "Id": "6f3646ce9b0944ea80b7b389b0ee4f5c",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 735.0,
+        "Y": 284.0
+      },
+      {
+        "Name": "Python Script",
+        "ShowGeometry": true,
+        "Id": "62f2b8e0afc34cf4ba50de0fcbbe2d0b",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 490.0,
+        "Y": 284.0
+      }
+    ],
+    "Annotations": [],
+    "X": 264.0,
+    "Y": 77.0,
+    "Zoom": 1.0
+  }
+}

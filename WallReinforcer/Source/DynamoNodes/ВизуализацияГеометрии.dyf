@@ -1,0 +1,170 @@
+{
+  "Uuid": "acd3a78c-61a0-4377-8129-f544b910df0b",
+  "IsCustomNode": true,
+  "Category": "1П.Отладка",
+  "Description": "Для отладки. Отображает в пространстве Revit геометрию типа точек, кривых, поверхностей и объемов",
+  "Name": "ВизуализацияГеометрии",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "# Загрузить стандартную библиотеку Python и библиотеку DesignScript\r\nimport sys\r\nimport clr\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nclr.AddReference('ProtoGeometry')\r\nfrom Autodesk.DesignScript.Geometry import *\r\nclr.AddReference('RevitNodes')\r\nimport Revit\r\nclr.ImportExtensions(Revit.GeometryConversion)\r\n\r\n\r\n# Введенные в этом узле данные сохраняется в виде списка в переменных IN.\r\nrevitGeoms = IN[0]\r\ndsGeoms = []\r\nfor revitGeom in revitGeoms:\r\n\tif revitGeom.GetType() == XYZ:\r\n\t\tdsGeom = Point.ByCoordinates(revitGeom.X*304.8, revitGeom.Y*304.8, revitGeom.Z*304.8)\r\n\telse:\r\n\t\tdsGeom = revitGeom.ToProtoType(True)\r\n\tdsGeoms.append(dsGeom)\r\n# Разместите код под этой строкой\r\n\r\n# Назначьте вывод переменной OUT.\r\nOUT = dsGeoms\r\n",
+      "Engine": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "16f7ba5fd06a4f3bba618de9e389b420",
+      "Inputs": [
+        {
+          "Id": "149b2a5601e44130ad1c06a16af8f819",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "e5b9be8461734dc19c287e0aa834b875",
+          "Name": "OUT",
+          "Description": "Результат сценария Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выполнение встроенного сценария Python."
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Output, DynamoCore",
+      "NodeType": "OutputNode",
+      "ElementResolver": null,
+      "Symbol": "dsGeoms",
+      "Id": "2a3237b13b094ce0ac98fae77036232c",
+      "Inputs": [
+        {
+          "Id": "56db6475cca04e19b0c0118645470746",
+          "Name": "",
+          "Description": "",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [],
+      "Replication": "Disabled",
+      "Description": "Результат функции, применять с пользовательскими узлами"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Symbol, DynamoCore",
+      "NodeType": "InputNode",
+      "Parameter": {
+        "Name": "revitGeoms",
+        "TypeName": "var",
+        "TypeRank": -1,
+        "DefaultValue": null,
+        "Description": "Список геометрических объектов, генерированных Revit API"
+      },
+      "Id": "83c59602c0004ee1bab40fc2281f94b5",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "bb6db97507e04a178a35544f93d70385",
+          "Name": "",
+          "Description": "Обозначение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Параметр функции, использовать с пользовательскими узлами.\r\n\r\nМожно указать тип и значение параметра по умолчанию. Например,\r\n\r\nввод: var [], [].\r\nзначение: bool = false"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "e5b9be8461734dc19c287e0aa834b875",
+      "End": "56db6475cca04e19b0c0118645470746",
+      "Id": "ff7519ed5c954889aac9d89c57b9e659",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "bb6db97507e04a178a35544f93d70385",
+      "End": "149b2a5601e44130ad1c06a16af8f819",
+      "Id": "a4b0615e528e4c61b191c9aee0d6239c",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Author": "None provided",
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": false,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.13.1.3887",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Фоновый просмотр",
+      "EyeX": 3964.339599609375,
+      "EyeY": 2079.2880859375,
+      "EyeZ": 16405.1484375,
+      "LookX": 3039.057861328125,
+      "LookY": -3292.31298828125,
+      "LookZ": -14688.78125,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Name": "Визуализация",
+        "ShowGeometry": true,
+        "Id": "16f7ba5fd06a4f3bba618de9e389b420",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 240.0,
+        "Y": 231.0
+      },
+      {
+        "Name": "Output",
+        "ShowGeometry": true,
+        "Id": "2a3237b13b094ce0ac98fae77036232c",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 518.0,
+        "Y": 233.5
+      },
+      {
+        "Name": "Input",
+        "ShowGeometry": true,
+        "Id": "83c59602c0004ee1bab40fc2281f94b5",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -386.0,
+        "Y": 228.5
+      }
+    ],
+    "Annotations": [],
+    "X": 357.73474867500181,
+    "Y": 80.535510027888,
+    "Zoom": 0.80332159346259779
+  }
+}

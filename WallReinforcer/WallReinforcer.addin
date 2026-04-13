@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Command">
+    <Assembly>D:\Repositories\Reinforcer\WallReinforcer\bin\Debug\WallReinforcer.dll</Assembly>
+    <AddInId>8F2E4A3C-9D1B-4E7F-A5C6-123456789ABC</AddInId>
+    <FullClassName>WallReinforcer.Commands.WallReinforcementCommand</FullClassName>
+    <Text>Армирование стен</Text>
+    <VendorId>1P</VendorId>
+    <VendorDescription>Плагин для армирования конструкций 3D</VendorDescription>
+  </AddIn>
+</RevitAddIns>

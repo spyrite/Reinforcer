@@ -1,0 +1,230 @@
+{
+  "Uuid": "8e0b9a4e-6f45-4dae-899a-5d2fd83228fb",
+  "IsCustomNode": true,
+  "Category": "1П.Фильтрация",
+  "Description": "Создание пересекателя на основе трёхмерного вида для поиска элементов",
+  "Name": "Пересекатель",
+  "ElementResolver": {
+    "ResolutionMap": {
+      "List": {
+        "Key": "List",
+        "Value": "BuiltIn.ds"
+      },
+      "String": {
+        "Key": "DSCore.String",
+        "Value": "DSCoreNodes.dll"
+      }
+    }
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\r\nclr.AddReference('System')\r\nfrom System.Collections.Generic import List\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nclr.AddReference('RevitServices')\r\nfrom RevitServices.Persistence import DocumentManager\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\nelemIds = IN[1]\r\nview3Ds = [view for view in FilteredElementCollector(doc).OfClass(View3D).ToElements() if view.Name == IN[0]]\r\nif view3Ds:\r\n\tview3D = view3Ds[0]\r\n\r\nintersector = ReferenceIntersector(List[ElementId](elemIds), FindReferenceTarget.Element, view3D) \r\n\r\nOUT = intersector",
+      "Engine": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "89afdb7d5153492d9e9c11eb9143f75d",
+      "Inputs": [
+        {
+          "Id": "0b11ff2757c94aba859dfc3768733989",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "1661e9568d374888a64d81a916d90ac9",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "0b7ddb7c7fba459dabc40b8f89c3463a",
+          "Name": "OUT",
+          "Description": "Результат сценария Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Выполнение встроенного сценария Python."
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Output, DynamoCore",
+      "NodeType": "OutputNode",
+      "ElementResolver": null,
+      "Symbol": "refIntersector",
+      "Id": "02d4cfc8ab8a40c6b98fdb20e069a633",
+      "Inputs": [
+        {
+          "Id": "0fd629eced9a4463bb558af288aee394",
+          "Name": "",
+          "Description": "",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [],
+      "Replication": "Disabled",
+      "Description": "Результат функции, применять с пользовательскими узлами"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Symbol, DynamoCore",
+      "NodeType": "InputNode",
+      "Parameter": {
+        "Name": "elemIds",
+        "TypeName": "var",
+        "TypeRank": -1,
+        "DefaultValue": null,
+        "Description": "Список ID элементов"
+      },
+      "Id": "b445c690d0a94cd8938b6f5b386b510e",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "2b2df04d28f244918ae22005e3952b50",
+          "Name": "",
+          "Description": "Обозначение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Параметр функции, использовать с пользовательскими узлами.\r\n\r\nМожно указать тип и значение параметра по умолчанию. Например,\r\n\r\nввод: var [], [].\r\nзначение: bool = false"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Symbol, DynamoCore",
+      "NodeType": "InputNode",
+      "Parameter": {
+        "Name": "view3DName",
+        "TypeName": "string",
+        "TypeRank": 0,
+        "DefaultValue": null,
+        "Description": "Имя трёхмерного вида"
+      },
+      "Id": "f642e3be8d9a496a9ff08b0133518a31",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "cf5046d433034508b0fa59b5d0e47120",
+          "Name": "",
+          "Description": "Обозначение",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Параметр функции, использовать с пользовательскими узлами.\r\n\r\nМожно указать тип и значение параметра по умолчанию. Например,\r\n\r\nввод: var [], [].\r\nзначение: bool = false"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "0b7ddb7c7fba459dabc40b8f89c3463a",
+      "End": "0fd629eced9a4463bb558af288aee394",
+      "Id": "60f39e976c2e4944b2f88a390b9738af",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "2b2df04d28f244918ae22005e3952b50",
+      "End": "1661e9568d374888a64d81a916d90ac9",
+      "Id": "3eb6f27e01d94d05aca2b608fbfe48e3",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "cf5046d433034508b0fa59b5d0e47120",
+      "End": "0b11ff2757c94aba859dfc3768733989",
+      "Id": "552b6e707342437cb76cf572f4d6342d",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Author": "None provided",
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": false,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.13.1.3887",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Фоновый просмотр",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Name": "Пересекатель",
+        "ShowGeometry": true,
+        "Id": "89afdb7d5153492d9e9c11eb9143f75d",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 507.0,
+        "Y": 304.0
+      },
+      {
+        "Name": "Output",
+        "ShowGeometry": true,
+        "Id": "02d4cfc8ab8a40c6b98fdb20e069a633",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 798.5,
+        "Y": 303.5
+      },
+      {
+        "Name": "Input",
+        "ShowGeometry": true,
+        "Id": "b445c690d0a94cd8938b6f5b386b510e",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 158.48188108823115,
+        "Y": 396.91231836118612
+      },
+      {
+        "Name": "Input",
+        "ShowGeometry": true,
+        "Id": "f642e3be8d9a496a9ff08b0133518a31",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 161.79280483435514,
+        "Y": 223.6630005373076
+      }
+    ],
+    "Annotations": [],
+    "X": 51.653712319959595,
+    "Y": -92.881604396211,
+    "Zoom": 1.1782858655947881
+  }
+}
