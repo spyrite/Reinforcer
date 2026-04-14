@@ -204,4 +204,8 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Assistants\" />
+  </ItemGroup>
+
 </Project>
