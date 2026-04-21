@@ -1,0 +1,33 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="RevitOSA.WallReinforcer.Properties" GeneratedClassName="Docs">
+  <Profiles />
+  <Settings>
+    <Setting Name="user_Surname" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="structureTab_Switch_Position" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="TransferFile_Path" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="printSettings_ColorDepth" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="families_stuctClass_AddStandardParametersFor" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="families_stuctClass_DeterminateAuto" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="reinf_Walls_WorksetName" Type="System.String" Scope="User">
+      <Value Profile="(Default)">02_Армирование_Стены и колонны</Value>
+    </Setting>
+    <Setting Name="reinf_FoundationAnchors_WorksetName" Type="System.String" Scope="User">
+      <Value Profile="(Default)">02_Армирование_Фундаменты_Выпуски</Value>
+    </Setting>
+    <Setting Name="reinf_SlabAnchors_WorksetName" Type="System.String" Scope="User">
+      <Value Profile="(Default)">02_Армирование_Плиты и балки_Выпуски</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>

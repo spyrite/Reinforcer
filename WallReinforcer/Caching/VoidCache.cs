@@ -1,38 +1,20 @@
 ﻿using Autodesk.Revit.DB;
-using RevitOSA.CoreMain.FB;
-using RevitOSA.CoreMain.Assistants;
+using RevitOSA.WallReinforcer.Resources;
+using RevitOSA.WallReinforcer.Tools;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-using Line = Autodesk.Revit.DB.Line;
-using Transform = Autodesk.Revit.DB.Transform;
-using View = Autodesk.Revit.DB.View;
-using Parameter = Autodesk.Revit.DB.Parameter;
-using AnnSettings = RevitOSA.CoreSettings.Properties.Annotations;
-using ReinfSettings = RevitOSA.CoreSettings.Properties.Reinforcement;
-using ModelSettings = RevitOSA.CoreSettings.Properties.Modelling;
-using Autodesk.Revit.DB.Architecture;
-
-#if R2023 || R2024 || R2025
+#if REVIT2023 || REVIT2024 || REVIT2025
 using static Autodesk.Revit.DB.SpecTypeId;
 #endif
 
+using static RevitOSA.WallReinforcer.Resources1P.RevitParameters;
 
-#if COMPANY_FP
-using RevitOSA.CoreSettings.ResourcesFP;
-using static RevitOSA.CoreSettings.ResourcesFP.RevitParameters;
+using Line = Autodesk.Revit.DB.Line;
+using Parameter = Autodesk.Revit.DB.Parameter;
 
-#elif COMPANY_OLP
-using static RevitOSA.CoreSettings.ResourcesOLP.RevitParameters;
-using RevitOSA.CoreSettings.ResourcesOLP;
-
-#else
-#endif
-
-namespace RevitOSA.CoreMain.Caching
+namespace RevitOSA.WallReinforcer.Caching
 {
     public class VoidCache
     {
@@ -146,7 +128,7 @@ namespace RevitOSA.CoreMain.Caching
         }
         public FamilySymbol GetVoidTypeFromFamily(Document doc, int familyIntId)
         {
-#if R2024 || R2025
+#if REVIT2024 || REVIT2025
             Family fam = doc.GetElement(new ElementId((long)familyIntId)) as Family;
 #else
             Family fam = doc.GetElement(new ElementId(familyIntId)) as Family;
@@ -185,7 +167,7 @@ namespace RevitOSA.CoreMain.Caching
         }
         public static FamilySymbol GetOpeningTypeFromFamily(Document doc, int familyIntId)
         {
-#if R2024 || R2025
+#if REVIT2024 || REVIT2025
             Family fam = doc.GetElement(new ElementId((long)familyIntId)) as Family;
 #else
             Family fam = doc.GetElement(new ElementId(familyIntId)) as Family;

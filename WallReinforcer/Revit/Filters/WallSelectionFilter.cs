@@ -26,7 +26,7 @@ namespace RevitOSA.WallReinforcer.Revit.Filters
 
         public bool AllowElement(Element elem)
         {
-            return elem is Wall
+            return elem is Wall;
         }
 
         public bool AllowReference(Reference reference, XYZ position)

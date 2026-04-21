@@ -1,33 +1,28 @@
 ﻿using Autodesk.Revit.DB;
-using RevitOSA.CoreMain.FB;
-using RevitOSA.CoreMain.Assistants;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using Line = Autodesk.Revit.DB.Line;
-using Transform = Autodesk.Revit.DB.Transform;
-using View = Autodesk.Revit.DB.View;
 using Parameter = Autodesk.Revit.DB.Parameter;
-using AnnSettings = RevitOSA.CoreSettings.Properties.Annotations;
-using ReinfSettings = RevitOSA.CoreSettings.Properties.Reinforcement;
-using ModelSettings = RevitOSA.CoreSettings.Properties.Modelling;
-using Autodesk.Revit.DB.Architecture;
+using ReinfSettings = RevitOSA.WallReinforcer.Properties.Reinforcement;
+using RevitOSA.WallReinforcer.Assistants;
+using RevitOSA.WallReinforcer.Tools;
+using RevitOSA.WallReinforcer.Resources;
+using RevitOSA.WallReinforcer.Revit.Filters;
+
+
+
 
 #if COMPANY_FP
-using RevitOSA.CoreSettings.ResourcesFP;
-using static RevitOSA.CoreSettings.ResourcesFP.RevitParameters;
+using static RevitOSA.WallReinforcer.Resources1P.RevitParameters;
 
 #elif COMPANY_OLP
-using static RevitOSA.CoreSettings.ResourcesOLP.RevitParameters;
-using RevitOSA.CoreSettings.ResourcesOLP;
+using static RevitOSA.WallReinforcer.ResourcesOLP.RevitParameters;
+using RevitOSA.WallReinforcer.ResourcesOLP;
 
 #else
 #endif
 
-namespace RevitOSA.CoreMain.Caching
+namespace RevitOSA.WallReinforcer.Caching
 {
     public class WallCache : RebarHostCache
     {
@@ -68,9 +63,9 @@ namespace RevitOSA.CoreMain.Caching
             // Поиск вышележащих элементов, распределение
             if (Geom.Solid == null) Geom.GetSolidData();
             List<RebarHostCache> allUpperHostCaches = ExtractingTools.GetNearestHostCaches(Geom, Geom.Faces.Top, Side.Top, 500 / 304.8);
-            UpperSlabCaches = new List<SlabCache>();
-            UpperWallCaches = new List<WallCache>();
-            UpperColumnCaches = new List<ColumnCache>();
+            UpperSlabCaches = [];
+            UpperWallCaches = [];
+            UpperColumnCaches = [];
             foreach (RebarHostCache hostCache in allUpperHostCaches)
             {
                 switch (hostCache.GetType().Name)
@@ -129,6 +124,7 @@ namespace RevitOSA.CoreMain.Caching
                 }
             }
         }
+
         public void GetVoidCaches()
         {
             List<VoidCache> voidCaches = ExtractingTools.ExtractVoidCaches(Elem);
@@ -219,7 +215,7 @@ namespace RevitOSA.CoreMain.Caching
                 double maxAnchorLengthUnderVoid = 0;
                 foreach (RebarAnchorCache anchorCache in Reinf.Anchors)
                 {
-                    foreach (RebarAnchorCache.AnchorPartData anchorPartData in anchorCache.AnchorPartDatas)
+                    foreach (AnchorPartData anchorPartData in anchorCache.AnchorPartDatas)
                     {
                         planeVoidBot.Project(anchorPartData.BottomPoint, out UV uv, out _);
                         if ((uv.U >= -voidCache.Geom.Dims.L / 2 & uv.U <= voidCache.Geom.Dims.L / 2)
@@ -227,7 +223,7 @@ namespace RevitOSA.CoreMain.Caching
                             maxAnchorLengthUnderVoid = anchorPartData.Length;
                     }
                 }
-                if (Math.Round(offsetVoidBot * 304.8) < Math.Round((maxAnchorLengthUnderVoid + ReinfSettings.Default.reinf_Walls_RebarCover_Edge) * 304.8))
+                if (Math.Round(offsetVoidBot * 304.8) < Math.Round((maxAnchorLengthUnderVoid + ReinfSettings.Default.reinf_RebarCover_Edge) * 304.8))
                 {
                     regionsPoints.Add(voidCache.Geom.Origins.CenterStartBottom);
                     regionsPoints.Add(voidCache.Geom.Origins.CenterEndBottom);
@@ -388,10 +384,21 @@ namespace RevitOSA.CoreMain.Caching
                 else return null;
             }
 
+            private void ComputeVRebarQuantitiesAndAlign()
+            {
+                double L0 = Geom.Dims.L - Reinf.DataY.Step;
+                int N = (int)Math.Round(L0 / Reinf.DataY.Step) + 1;
+                
+                VRebarQuantities = N % 2 == 0 
+                    ? [N / 2, N / 2, N / 2, N / 2] 
+                    : [(N + 1) / 2, N - (N + 1) / 2, (N + 1) / 2, N - (N + 1) / 2];
+
+                VRebarAlign = (Geom.Dims.L - Reinf.DataY.Step * (N - 1)) / 2;
+            }
+
             // Свойства
-            public List<SlabCache> UpperSlabCaches { get; set; }
-            public List<WallCache> UpperWallCaches { get; set; }
-            public List<ColumnCache> UpperColumnCaches { get; set; }
+            public List<int> VRebarQuantities { get; private set; }
+            public double VRebarAlign { get; private set; }
         }
         public class IntersectionCache : RebarHostCache
         {
@@ -402,11 +409,6 @@ namespace RevitOSA.CoreMain.Caching
                 Geom = new GeometryWallCache.IntersectionCache(geomWallCache, attachedGeometryCaches, origin);
                 Reinf = new ReinforcementWallCache.IntersectionCache(geomWallCache.Elem as Wall);
             }
-
-            // Свойства
-            public List<SlabCache> UpperSlabCaches { get; set; }
-            public List<WallCache> UpperWallCaches { get; set; }
-            public List<ColumnCache> UpperColumnCaches { get; set; }
         }
         public class EndCache : RebarHostCache
         {
@@ -417,11 +419,6 @@ namespace RevitOSA.CoreMain.Caching
                 Geom = new GeometryWallCache.EndCache(geomWallCache, origin, xDir);
                 Reinf = new ReinforcementWallCache.EndCache(geomWallCache.Elem as Wall);
             }
-
-            // Свойства
-            public List<SlabCache> UpperSlabCaches { get; set; }
-            public List<WallCache> UpperWallCaches { get; set; }
-            public List<ColumnCache> UpperColumnCaches { get; set; }
         }
 
         // Свойства
@@ -431,8 +428,5 @@ namespace RevitOSA.CoreMain.Caching
         public List<IntersectionCache> Intersections { get; set; }
         public List<EndCache> Ends { get; set; }
         public List<VoidCache> Voids { get; set; }
-        public List<SlabCache> UpperSlabCaches { get; set; }
-        public List<WallCache> UpperWallCaches { get; set; }
-        public List<ColumnCache> UpperColumnCaches { get; set; }
     }
 }

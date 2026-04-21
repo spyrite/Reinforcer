@@ -70,7 +70,25 @@
     </Otherwise>
   </Choose>
 
-  <!-- Net Core -->
+	<Choose>
+		<When Condition="$(Configuration.Contains('FP'))">
+			<PropertyGroup>
+				<Company>FP</Company>
+			</PropertyGroup>
+		</When>
+		<When Condition="$(Configuration.Contains('OLP'))">
+			<PropertyGroup>
+				<Company>OLP</Company>
+			</PropertyGroup>
+		</When>
+		<Otherwise>
+			<PropertyGroup>
+				<Company>FP</Company>
+			</PropertyGroup>
+		</Otherwise>
+	</Choose>
+
+	<!-- Net Core -->
   <PropertyGroup Condition="!$(TargetFramework.StartsWith('net4'))">
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
@@ -81,7 +99,7 @@
   <PropertyGroup Condition="!$(Configuration.Contains('Debug'))">
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\$(RevitVersion)</OutputPath>
-    <DefineConstants>$(DefineConstants);REVIT$(RevitVersion)</DefineConstants>
+    <DefineConstants>$(DefineConstants);REVIT$(RevitVersion);COMPANY_$(Company)</DefineConstants>
     <NoWarn>MSB3052</NoWarn>
     <DebugType>None</DebugType>
   </PropertyGroup>
@@ -90,7 +108,7 @@
   <PropertyGroup Condition="$(Configuration.Contains('Debug'))">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>$(DefineConstants);DEBUG;TRACE;REVIT$(RevitVersion)</DefineConstants>
+    <DefineConstants>$(DefineConstants);DEBUG;TRACE;REVIT$(RevitVersion);COMPANY_$(Company)</DefineConstants>
     <DebugType>Full</DebugType>
   </PropertyGroup>
 
@@ -116,7 +134,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Company>1P</Company>
+    <Company>FP</Company>
     <Authors>Pavel Smirnov</Authors>
     <Description>Плагин для армирования конструкций 3D </Description>
     <CopyrightYears>$([System.DateTime]::Now.ToString('yyyy'))</CopyrightYears>
@@ -127,10 +145,6 @@
     <Product>$(PackageId)</Product>
     <Copyright>Copyright © $(CopyrightYears) $(Company)</Copyright>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Include="Source\temp.py" />
-  </ItemGroup>
 
   <ItemGroup>
     <None Include="Revit\App.cs" />
@@ -154,10 +168,40 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Update="Properties\Annotations.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Annotations.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\Docs.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Docs.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\ElementParametersAssistant.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>ElementParametersAssistant.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\Modelling.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Modelling.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\Reinforcement.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Reinforcement.settings</DependentUpon>
+    </Compile>
     <Compile Update="Resources1P\ElemMarkDescriptions.Designer.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>ElemMarkDescriptions.resx</DependentUpon>
+    </Compile>
+    <Compile Update="Resources1P\ElemZoneToSheetSet.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>ElemZoneToSheetSet.resx</DependentUpon>
     </Compile>
     <Compile Update="Resources1P\FamilyNamePrefixes.Designer.cs">
       <DesignTime>True</DesignTime>
@@ -168,6 +212,11 @@
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>IdenityZones.resx</DependentUpon>
+    </Compile>
+    <Compile Update="Resources1P\LinePatterns.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>LinePatterns.resx</DependentUpon>
     </Compile>
     <Compile Update="Resources1P\ReinforcementPartitionNames.Designer.cs">
       <DesignTime>True</DesignTime>
@@ -186,6 +235,10 @@
       <Generator>PublicResXFileCodeGenerator</Generator>
       <LastGenOutput>ElemMarkDescriptions.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <EmbeddedResource Update="Resources1P\ElemZoneToSheetSet.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>ElemZoneToSheetSet.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
     <EmbeddedResource Update="Resources1P\FamilyNamePrefixes.resx">
       <Generator>PublicResXFileCodeGenerator</Generator>
       <LastGenOutput>FamilyNamePrefixes.Designer.cs</LastGenOutput>
@@ -193,6 +246,10 @@
     <EmbeddedResource Update="Resources1P\IdenityZones.resx">
       <Generator>PublicResXFileCodeGenerator</Generator>
       <LastGenOutput>IdenityZones.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Update="Resources1P\LinePatterns.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>LinePatterns.Designer.cs</LastGenOutput>
     </EmbeddedResource>
     <EmbeddedResource Update="Resources1P\ReinforcementPartitionNames.resx">
       <Generator>PublicResXFileCodeGenerator</Generator>
@@ -205,7 +262,31 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Assistants\" />
+    <Folder Include="Views\" />
+    <Folder Include="ViewModels\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Properties\Annotations.settings">
+      <Generator>PublicSettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Annotations.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\Docs.settings">
+      <Generator>PublicSettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Docs.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\ElementParametersAssistant.settings">
+      <Generator>PublicSettingsSingleFileGenerator</Generator>
+      <LastGenOutput>ElementParametersAssistant.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\Modelling.settings">
+      <Generator>PublicSettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Modelling.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="Properties\Reinforcement.settings">
+      <Generator>PublicSettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Reinforcement.Designer.cs</LastGenOutput>
+    </None>
   </ItemGroup>
 
 </Project>

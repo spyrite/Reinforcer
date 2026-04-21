@@ -18,6 +18,9 @@ namespace RevitOSA.WallReinforcer.Revit.Filters
         public static readonly ElementFilter Foundations = new LogicalAndFilter(new ElementCategoryFilter(BuiltInCategory.OST_StructuralFoundation), new LogicalOrFilter(new ElementClassFilter(typeof(Floor)), new ElementClassFilter(typeof(FamilyInstance))));
         public static readonly ElementFilter GMs = new LogicalAndFilter(new ElementClassFilter(typeof(FamilyInstance)), new ElementCategoryFilter(BuiltInCategory.OST_GenericModel));
         public static readonly ElementFilter Railings = new LogicalAndFilter(new ElementClassFilter(typeof(FamilyInstance)), new ElementCategoryFilter(BuiltInCategory.OST_StairsRailing));
+        
+        
         public static readonly ElementFilter Union = new LogicalOrFilter(new List<ElementFilter> { Floors, Columns, Walls, Beams, Stairs, Foundations, Railings, GMs });
+        public static readonly ElementFilter ConcreteFraming = new LogicalOrFilter(new List<ElementFilter> { Floors, Columns, Walls, Beams });
     }
 }

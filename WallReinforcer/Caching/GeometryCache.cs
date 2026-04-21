@@ -1,33 +1,9 @@
 ﻿using Autodesk.Revit.DB;
-using RevitOSA.CoreMain.FB;
-using RevitOSA.CoreMain.Assistants;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using RevitOSA.WallReinforcer.Tools;
 
-using Line = Autodesk.Revit.DB.Line;
-using Transform = Autodesk.Revit.DB.Transform;
-using View = Autodesk.Revit.DB.View;
-using Parameter = Autodesk.Revit.DB.Parameter;
-using AnnSettings = RevitOSA.CoreSettings.Properties.Annotations;
-using ReinfSettings = RevitOSA.CoreSettings.Properties.Reinforcement;
-using ModelSettings = RevitOSA.CoreSettings.Properties.Modelling;
-using Autodesk.Revit.DB.Architecture;
-
-#if COMPANY_FP
-using RevitOSA.CoreSettings.ResourcesFP;
-using static RevitOSA.CoreSettings.ResourcesFP.RevitParameters;
-
-#elif COMPANY_FP
-using static RevitOSA.CoreSettings.ResourcesOLP.RevitParameters;
-using RevitOSA.CoreSettings.ResourcesOLP;
-
-#else
-#endif
-
-namespace RevitOSA.CoreMain.Caching
+namespace RevitOSA.WallReinforcer.Caching
 {
     public class GeometryCache
     {
@@ -55,7 +31,7 @@ namespace RevitOSA.CoreMain.Caching
         public GeometryCache(Element elem)
         {
             doc = elem.Document;
-#if R2024 || R2025
+#if REVIT2024 || REVIT2025
             BasePoint = BasePoint.GetProjectBasePoint(doc);
 #else
             BasePoint = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_ProjectBasePoint).FirstElement() as BasePoint;

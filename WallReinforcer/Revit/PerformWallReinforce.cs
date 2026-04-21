@@ -1,13 +1,26 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Electrical;
+using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
-using RevitOSA.CoreMain.Caching;
+using FilterTreeControlWPF;
+using RevitOSA.WallReinforcer.Assistants;
+using RevitOSA.WallReinforcer.Caching;
+using RevitOSA.WallReinforcer.Resources;
 using RevitOSA.WallReinforcer.Revit.Filters;
+using RevitOSA.WallReinforcer.Tools;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata;
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+
+using DocSettings = RevitOSA.WallReinforcer.Properties.Docs;
+using Document = Autodesk.Revit.DB.Document;
+using ReinfSettings = RevitOSA.WallReinforcer.Properties.Reinforcement;
 
 namespace RevitOSA.WallReinforcer.Revit
 {
@@ -21,6 +34,8 @@ namespace RevitOSA.WallReinforcer.Revit
         private List<ElementId> _selectedElementIds;
         private List<WallCache> _wCaches;
 
+        private int _worksetIntId = -1;
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             //Инициализация
@@ -31,7 +46,7 @@ namespace RevitOSA.WallReinforcer.Revit
             _selectedElementIds = [.. UIDoc.Selection.GetElementIds()];
             _wCaches = [];
 
-            //Выбор стен
+            //Выбор стен, сбор данных
             _wCaches = [.. _selectedElementIds.Select(id => Doc.GetElement(id)).Where(elem => elem is Wall).Select(elem => new WallCache(elem))];
 
             if (!_wCaches.Any())
@@ -42,10 +57,109 @@ namespace RevitOSA.WallReinforcer.Revit
                 }
                 catch { return Result.Cancelled; }
 
+            if (Doc.IsWorkshared) _worksetIntId = WorksetAssistant.GetOrCreateUserWorksetIntId(Doc, DocSettings.Default.reinf_Walls_WorksetName);
 
-            
+            //Поиск арматурных выпусков
+            _wCaches.ForEach(c => c.Reinf?.GetAnchors(c.Geom));
+
+            //Анализ, деление на регионы, пересечения, определение концов
+            foreach (WallCache wCache in _wCaches.Where(c => !c.Reinf.Anchors.Any())) wCache.AnalyzeForSubCaches();
+
+            using (Transaction tx = new(Doc, "RevitOSA: Армирование стен"))
+            {
+                tx.Start();
+
+                //Обновление защитного слоя
+                _wCaches.ForEach(c => RebarCoverAssistant.SetRebarCoversToHost(c.Wall, Doc,
+                    [0,0,0,ReinfSettings.Default.reinf_RebarCover_Edge,
+                    ReinfSettings.Default.reinf_Walls_Y_Edge_CenterAlign - c.Reinf.DataX.D,
+                    ReinfSettings.Default.reinf_Walls_Y_Edge_CenterAlign - c.Reinf.DataX.D]));
+                
+                //Армирование без выпусков
+
+
+
+                //Армирование c выпусками
+
+
+
+                tx.Commit();
+            }
+
+
+
 
             return Result.Succeeded;
+        }
+
+        private void CreateVerticalRebarsOnIntersectionsWithColumns(WallCache wCache)
+        {
+            if (wCache.Geom.Dims.H >= 1000/304.8)
+            {
+                foreach (WallCache.IntersectionCache inter in wCache.Intersections)
+                {
+                    inter.AnalyzeForUpperElems();
+                    double topAnc = inter.UpperSlabCaches.Max(c => c.Geom.Dims.T)
+                        + (inter.UpperWallCaches.Cast<RebarHostCache>().Union(inter.UpperColumnCaches.Cast<RebarHostCache>()).Any()
+                        ? ReinforcementTools.ComputeAorOVLength(wCache.Reinf.DataY.D, wCache.BClass, wCache.Reinf.RClass, AnchorMode.AnchorCompress)
+                        : 0);
+
+                    topAnc = topAnc - topAnc > 0 ? 0 : ReinfSettings.Default.reinf_RebarCover_Edge / 304.8;
+                    double botOv = (Math.Floor(ReinforcementTools.ComputeAorOVLength(wCache.Reinf.DataY.D, wCache.BClass, wCache.Reinf.RClass, AnchorMode.OverlapCompress)) 
+                        * 1.3 * 304.8 / 10) * 10 / 304.8;
+
+
+
+
+                }
+            }
+        }
+
+        private Rebar SetStirrup(Rebar rebar0, Rebar rebar1, RebarHostCache hostCache)
+        {
+            Rebar stirrup = null;
+            XYZ p0 = rebar0.GetCenterlineCurves(false, true, true, MultiplanarOption.IncludeOnlyPlanarCurves, 0)[0].GetEndPoint(1);
+            XYZ p1 = rebar1.GetCenterlineCurves(false, true, true, MultiplanarOption.IncludeOnlyPlanarCurves, 0)[0].GetEndPoint(1);
+
+            double dst = rebar0.GetRebarConstraintsManager().GetCurrentConstraintOnHandle(new RebarHandles(rebar0).Top).GetDistanceToTargetHostFace();
+
+            if (Math.Round(p0.Z * 304.8) == Math.Round(p1.Z * 304.8)
+                    & dst < ReinforcementTools.ComputeBaseAnchorLength(hostCache.Reinf.DataY.D, hostCache.BClass, "A500"))
+            {
+                XYZ xDir = rebar0.GetShapeDrivenAccessor().Normal.Normalize();
+                List<Curve> lines = 
+                    [
+                        Line.CreateBound(p0 - XYZ.BasisZ * (hostCache.Geom.Dims.T * 2 + hostCache.Reinf.DataY.D / 2) 
+                        - xDir * hostCache.Reinf.DataY.D, p0 - XYZ.BasisZ * hostCache.Reinf.DataY.D / 2 - xDir * hostCache.Reinf.DataY.D),
+
+                        Line.CreateBound(p0 - XYZ.BasisZ * hostCache.Reinf.DataY.D / 2 - xDir * hostCache.Reinf.DataY.D, p1 
+                        - XYZ.BasisZ * hostCache.Reinf.DataY.D / 2 - xDir * hostCache.Reinf.DataY.D),
+
+                        Line.CreateBound(p1 - XYZ.BasisZ * hostCache.Reinf.DataY.D / 2 - xDir * hostCache.Reinf.DataY.D, p1 
+                        - XYZ.BasisZ * (hostCache.Geom.Dims.T * 2 + hostCache.Reinf.DataY.D / 2) - xDir * hostCache.Reinf.DataY.D)
+                    ];
+
+                stirrup = Rebar.CreateFromCurvesAndShape(Doc, GetRebarShape(ReinfSettings.Default.reinf_Shape_Stirrup_IntId), hostCache.Reinf.DataY.BarType, null, null,
+                    hostCache.Elem, xDir, lines, RebarHookOrientation.Left, RebarHookOrientation.Left);
+                stirrup.GetShapeDrivenAccessor().SetLayoutAsSingle();
+            }
+            return stirrup;
+        }
+
+        /// <summary>
+        /// Вызывать только при открытой транзакции
+        /// </summary>
+        private void SetParameters(Element elem, string partitionName, ElementId phaseId)
+        {
+            if (Doc.IsWorkshared) elem.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM)?.Set(_worksetIntId);
+            elem.get_Parameter(BuiltInParameter.NUMBER_PARTITION_PARAM).Set(partitionName);
+            elem.get_Parameter(BuiltInParameter.PHASE_CREATED).Set(phaseId);
+        }
+
+        private static RebarShape GetRebarShape(int intId)
+        {
+            Element elem = Doc.GetElement(new ElementId(intId));
+            return elem is RebarShape ? elem as RebarShape : null;
         }
     }
 }

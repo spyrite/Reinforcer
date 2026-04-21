@@ -1,53 +1,17 @@
 ﻿using Autodesk.Revit.DB;
-using RevitOSA.CoreMain.FB;
-using RevitOSA.CoreMain.Assistants;
-using System;
-using System.Resources;
-using System.Collections;
-using System.Globalization;
+using Autodesk.Revit.DB.Structure;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-using Line = Autodesk.Revit.DB.Line;
-using Transform = Autodesk.Revit.DB.Transform;
-using View = Autodesk.Revit.DB.View;
-using Parameter = Autodesk.Revit.DB.Parameter;
-using AnnSettings = RevitOSA.CoreSettings.Properties.Annotations;
-using ReinfSettings = RevitOSA.CoreSettings.Properties.Reinforcement;
-using ModelSettings = RevitOSA.CoreSettings.Properties.Modelling;
-using Autodesk.Revit.DB.Architecture;
+using RevitOSA.WallReinforcer.Assistants;
+using RevitOSA.WallReinforcer.Resources;
 
-#if R2023 || R2024 || R2025
-using static Autodesk.Revit.DB.SpecTypeId;
-#endif
+using ReinfSettings = RevitOSA.WallReinforcer.Properties.Reinforcement;
+using static RevitOSA.WallReinforcer.Resources1P.RevitParameters;
+using ReinforcementData = RevitOSA.WallReinforcer.Resources.ReinforcementData;
+using RevitOSA.WallReinforcer.Tools;
 
-#if COMPANY_FP
-using RevitOSA.CoreSettings.ResourcesFP;
-using static RevitOSA.CoreSettings.ResourcesFP.RevitParameters;
-
-#elif COMPANY_OLP
-using static RevitOSA.CoreSettings.ResourcesOLP.RevitParameters;
-using RevitOSA.CoreSettings.ResourcesOLP;
-using Autodesk.Revit.DB.Structure;
-
-#else
-#endif
-
-#if COMPANY_FP
-using RevitOSA.CoreSettings.ResourcesFP;
-using static RevitOSA.CoreSettings.ResourcesFP.RevitParameters;
-using Autodesk.Revit.DB.Structure;
-
-#elif COMPANY_FP
-using static RevitOSA.CoreSettings.ResourcesOLP.RevitParameters;
-using RevitOSA.CoreSettings.ResourcesOLP;
-
-#else
-#endif
-
-namespace RevitOSA.CoreMain.Caching
+namespace RevitOSA.WallReinforcer.Caching
 {
     public class ReinforcementVoidCache : ReinforcementCache
     {
@@ -121,10 +85,10 @@ namespace RevitOSA.CoreMain.Caching
 
 
             {
-#if R2023
+#if REVIT2023
                 reinfData.BarType = doc.GetElement(new ElementId(ReinfSettings.Default.reinf_Voids_X_Type_IntId)) as RebarBarType;
                 reinfData.D = reinfData.BarType.BarNominalDiameter;
-#elif R2024 || R2025
+#elif REVIT2024 || REVIT2025
                 reinfData.BarType = doc.GetElement(new ElementId((long)ReinfSettings.Default.reinf_Voids_X_Type_IntId)) as RebarBarType;
                 reinfData.D = reinfData.BarType.BarNominalDiameter;
 #else
@@ -160,10 +124,10 @@ namespace RevitOSA.CoreMain.Caching
             }
             else if (ReinfSettings.Default.reinf_Voids_Y_Type_IntId != -1)
             {
-#if R2023
+#if REVIT2023
                 reinfData.BarType = doc.GetElement(new ElementId(ReinfSettings.Default.reinf_Voids_Y_Type_IntId)) as RebarBarType;
                 reinfData.D = reinfData.BarType.BarNominalDiameter;
-#elif R2024 || R2025
+#elif REVIT2024 || REVIT2025
                 reinfData.BarType = doc.GetElement(new ElementId((long)ReinfSettings.Default.reinf_Voids_Y_Type_IntId)) as RebarBarType;
                 reinfData.D = reinfData.BarType.BarNominalDiameter;
 #else

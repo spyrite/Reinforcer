@@ -1,0 +1,42 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="RevitOSA.WallReinforcer.Properties" GeneratedClassName="Modelling">
+  <Profiles />
+  <Settings>
+    <Setting Name="slabOpeningFamily_IntId" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-1</Value>
+    </Setting>
+    <Setting Name="wallOpeningFamily_IntId" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-1</Value>
+    </Setting>
+    <Setting Name="doorVoidFamily_IntId" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-1</Value>
+    </Setting>
+    <Setting Name="windowVoidFamily_IntId" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-1</Value>
+    </Setting>
+    <Setting Name="lintelElementCornerFamily_IntId" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-1</Value>
+    </Setting>
+    <Setting Name="lintelElementBarFamily_IntId" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-1</Value>
+    </Setting>
+    <Setting Name="lintelElementRebarFamily_IntId" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-1</Value>
+    </Setting>
+    <Setting Name="lintelFamily_IntId" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-1</Value>
+    </Setting>
+    <Setting Name="aiCreation_IncludeAttachedComponents" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="floorDecorType_BeginsWith" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Отделка</Value>
+    </Setting>
+    <Setting Name="wallDecorType_BeginsWith" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Отделка</Value>
+    </Setting>
+    <Setting Name="ceilingDecorType_BeginsWith" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Отделка</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>

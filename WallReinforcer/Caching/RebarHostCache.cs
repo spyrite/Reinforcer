@@ -1,44 +1,23 @@
 ﻿using Autodesk.Revit.DB;
-using RevitOSA.CoreMain.FB;
-using RevitOSA.CoreMain.Assistants;
+using Autodesk.Revit.DB.Structure;
 using System;
-using System.Resources;
-using System.Collections;
-using System.Globalization;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Resources;
+using System.Globalization;
+using System.Collections;
+
+using RevitOSA.WallReinforcer.Tools;
+using RevitOSA.WallReinforcer.Resources;
+using RevitOSA.WallReinforcer.Resources1P;
+using RevitOSA.WallReinforcer.Assistants;
+
+using static RevitOSA.WallReinforcer.Resources1P.RevitParameters;
 
 using Line = Autodesk.Revit.DB.Line;
-using Transform = Autodesk.Revit.DB.Transform;
-using View = Autodesk.Revit.DB.View;
-using Parameter = Autodesk.Revit.DB.Parameter;
-using AnnSettings = RevitOSA.CoreSettings.Properties.Annotations;
-using ReinfSettings = RevitOSA.CoreSettings.Properties.Reinforcement;
-using ModelSettings = RevitOSA.CoreSettings.Properties.Modelling;
-using Autodesk.Revit.DB.Architecture;
-using RevitOSA.CoreSettings.ResourcesFP;
+using ReinfSettings = RevitOSA.WallReinforcer.Properties.Reinforcement;
 
-
-#if R2023 || R2024 || R2025
-using static Autodesk.Revit.DB.SpecTypeId;
-#endif
-
-using Autodesk.Revit.DB.Structure;
-
-#if COMPANY_FP
-using RevitOSA.CoreSettings.ResourcesFP;
-using static RevitOSA.CoreSettings.ResourcesFP.RevitParameters;
-
-#elif COMPANY_FP
-using static RevitOSA.CoreSettings.ResourcesOLP.RevitParameters;
-using RevitOSA.CoreSettings.ResourcesOLP;
-
-#else
-#endif
-
-namespace RevitOSA.CoreMain.Caching
+namespace RevitOSA.WallReinforcer.Caching
 {
     public class RebarHostCache
     {
@@ -52,7 +31,7 @@ namespace RevitOSA.CoreMain.Caching
         {
             doc = elem.Document;
             Elem = elem;
-#if R2024 || R2025
+#if REVIT2024 || REVIT2025
             IntId = (int)elem.Id.Value;
 #else
             IntId = elem.Id.IntegerValue;
@@ -74,6 +53,7 @@ namespace RevitOSA.CoreMain.Caching
             PartitionAttachments = null;
         }
 
+        //Свойства
         public Element Elem { get; set; }
         public int IntId { get; set; }
         public GeometryCache Geom { get; set; }
@@ -90,6 +70,19 @@ namespace RevitOSA.CoreMain.Caching
         public List<Attachment> PartitionAttachments { get; set; }
 
         //public List<Attachment> LintelAttachments { get; set; }
+
+        public List<SlabCache> UpperSlabCaches { get; set; }
+        public List<WallCache> UpperWallCaches { get; set; }
+        public List<ColumnCache> UpperColumnCaches { get; set; }
+
+
+        //Методы
+        public void AnalyzeForUpperElems()
+        {
+            UpperSlabCaches = ExtractingTools.GetNearestSlabCaches(Geom, Side.Top);
+            UpperWallCaches = ExtractingTools.GetNearestWallCaches(Geom, Side.Top);
+            UpperColumnCaches = ExtractingTools.GetNearestColumnCaches(Geom, Side.Top);
+        }
 
         private void GetSheetSetNames()
         {
@@ -122,7 +115,7 @@ namespace RevitOSA.CoreMain.Caching
                 ElementFilter filter1 = new ElementLevelFilter(Geom.LvlIds.Base);
                 ElementFilter filter2 = new ElementIntersectsSolidFilter(catchSolid);
                 ElementFilter filter = new LogicalAndFilter(filter1, filter2);
-#if R2024 || R2025
+#if REVIT2024 || REVIT2025
                 attHosts.AddRange(new FilteredElementCollector(doc).OfClass(Elem.GetType()).OfCategory(Elem.Category.BuiltInCategory).WherePasses(filter).ToElements().ToList());
 #else
                 attHosts.AddRange(new FilteredElementCollector(doc).OfClass(Elem.GetType()).OfCategory((BuiltInCategory)Elem.Category.Id.IntegerValue).WherePasses(filter).ToElements().ToList());
