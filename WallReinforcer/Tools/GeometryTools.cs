@@ -4,7 +4,9 @@ using RevitOSA.WallReinforcer.Caching;
 using RevitOSA.WallReinforcer.Revit.Filters;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace RevitOSA.WallReinforcer.Tools
 {
@@ -424,6 +426,15 @@ namespace RevitOSA.WallReinforcer.Tools
             plane.Project(point, out UV uv, out _);
             XYZ projectPoint = plane.Origin + plane.XVec * uv.U + plane.YVec * uv.V;
             return projectPoint;
+        }
+
+        public static bool IsPointNearHostEdge(this XYZ point, GeometryCache hostCache, GeometryCache attachmentCache, double offsetX, double tolerance)
+        {
+            List<XYZ> checkPoints = [
+                point - attachmentCache.Dirs.X*(hostCache.Dims.T/2 - offsetX/304.8 + tolerance/304.8) + hostCache.Dirs.Z*tolerance/304.8,
+                point + attachmentCache.Dirs.X*(hostCache.Dims.T/2 - offsetX/304.8 + tolerance/304.8) + hostCache.Dirs.Z*tolerance/304.8,
+                ];
+            return checkPoints.Select(p => new BoundingBoxContainsPointFilter(p).PassesFilter(attachmentCache.Elem)).Any(c => false);
         }
         #endregion
 

@@ -92,7 +92,7 @@ namespace RevitOSA.WallReinforcer.Revit
             return Result.Succeeded;
         }
 
-        private void CreateVerticalRebarsOnIntersectionsWithColumns(WallCache wCache)
+        private void CreateVerticalRebarsOnIntersectionsWithColumns(WallCache wCache, double offset, double tolerance)
         {
             if (wCache.Geom.Dims.H >= 1000/304.8)
             {
@@ -108,8 +108,25 @@ namespace RevitOSA.WallReinforcer.Revit
                     double botOv = (Math.Floor(ReinforcementTools.ComputeAorOVLength(wCache.Reinf.DataY.D, wCache.BClass, wCache.Reinf.RClass, AnchorMode.OverlapCompress)) 
                         * 1.3 * 304.8 / 10) * 10 / 304.8;
 
+                    List<List<int>> coeffs = [[-1, -1, 0], [-1, 1, 1], [1, 1, 0], [1, -1, 1]];
+
+                    for (int i = 0; i < 4; i++)
+                    {
+                        XYZ startPoint = inter.Geom.Origins.CenterMiddleBottom + wCache.Geom.Dirs.X * (offset / 304.8) * coeffs[i][0] - wCache.Geom.Dirs.Y * (offset / 304.8) * coeffs[i][1];
+                        if (!startPoint.IsPointNearHostEdge(wCache.Geom, new GeometryCache(inter.GetAttachedRebarHosts().FirstOrDefault()), offset, tolerance))
+                        {
+                            XYZ p0 = startPoint + XYZ.BasisZ * botOv * coeffs[i][2];
+                            XYZ p1 = startPoint + XYZ.BasisZ * (wCache.Geom.Dims.H + topAnc);
+                            Line vLine = Line.CreateBound(p0, p1);
+
+                            Rebar vRebar = Rebar.CreateFromCurves(Doc, RebarStyle.Standard, wCache.Reinf.DataY.BarType,
+                                null, null, wCache.Elem, wCache.Geom.Dirs.Y, [vLine], RebarHookOrientation.Left, RebarHookOrientation.Left, true, false);
+
+                        }
 
 
+
+                    }
 
                 }
             }

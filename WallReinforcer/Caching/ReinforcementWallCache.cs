@@ -131,8 +131,6 @@ namespace RevitOSA.WallReinforcer.Caching
         }
         public class IntersectionCache : ReinforcementCache
         {
-            public static readonly List<List<int>> Coeffs = [[-1, -1, 0], [-1, 1, 1], [1, 1, 0], [1, -1, 1]];
-
             //Конструкторы
             public IntersectionCache(Wall wall) : base(wall)
             {
