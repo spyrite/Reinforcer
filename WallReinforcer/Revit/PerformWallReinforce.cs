@@ -7,6 +7,7 @@ using FilterTreeControlWPF;
 using RevitOSA.WallReinforcer.Assistants;
 using RevitOSA.WallReinforcer.Caching;
 using RevitOSA.WallReinforcer.Resources;
+using RevitOSA.WallReinforcer.Resources1P;
 using RevitOSA.WallReinforcer.Revit.Filters;
 using RevitOSA.WallReinforcer.Tools;
 using System;
@@ -109,11 +110,24 @@ namespace RevitOSA.WallReinforcer.Revit
                         * 1.3 * 304.8 / 10) * 10 / 304.8;
 
                     List<List<int>> coeffs = [[-1, -1, 0], [-1, 1, 1], [1, 1, 0], [1, -1, 1]];
+                    Element attachedElement = inter.GetAttachedRebarHosts().FirstOrDefault();
+                    RebarHostCache attachmentCache = null;
+                    switch (attachedElement)
+                    {
+                        case Wall:
+                             attachmentCache = new WallCache(attachedElement as Wall);
+                            break;
+                        case FamilyInstance when attachedElement.Category.BuiltInCategory == BuiltInCategory.OST_StructuralColumns:
+                            attachmentCache = new ColumnCache(attachedElement as FamilyInstance);
+                            break;
+                        default:  continue;
+                    }
 
+                    List<Rebar> vRebars = [];
                     for (int i = 0; i < 4; i++)
                     {
                         XYZ startPoint = inter.Geom.Origins.CenterMiddleBottom + wCache.Geom.Dirs.X * (offset / 304.8) * coeffs[i][0] - wCache.Geom.Dirs.Y * (offset / 304.8) * coeffs[i][1];
-                        if (!startPoint.IsPointNearHostEdge(wCache.Geom, new GeometryCache(inter.GetAttachedRebarHosts().FirstOrDefault()), offset, tolerance))
+                        if (!startPoint.IsPointNearHostEdge(wCache.Geom, attachmentCache.Geom, offset, tolerance))
                         {
                             XYZ p0 = startPoint + XYZ.BasisZ * botOv * coeffs[i][2];
                             XYZ p1 = startPoint + XYZ.BasisZ * (wCache.Geom.Dims.H + topAnc);
@@ -121,13 +135,19 @@ namespace RevitOSA.WallReinforcer.Revit
 
                             Rebar vRebar = Rebar.CreateFromCurves(Doc, RebarStyle.Standard, wCache.Reinf.DataY.BarType,
                                 null, null, wCache.Elem, wCache.Geom.Dirs.Y, [vLine], RebarHookOrientation.Left, RebarHookOrientation.Left, true, false);
+                            vRebar.SetVerticalRebarConstarints(wCache.Geom.Faces, attachmentCache.Geom.Faces, wCache.Geom.Dirs.X, attachmentCache.Geom.Dirs.X,
+                                wCache.Reinf.DataX.D, wCache.Reinf.DataY.D, attachmentCache.Reinf.DataY.D);
+                            SetParameters(vRebar, ReinforcementPartitionNames.reinfPartName_VertCorner, wCache.PhaseId);
+                            vRebars.Add(vRebar);
 
+                            if (vRebars.Count == 2 || vRebars.Count == 4)
+                            {
+                                Rebar stirrup = SetStirrup(vRebars[i - 1], vRebars[i], wCache);
+                                stirrup.SetStirrupConstarints(new Tuple<Rebar, Rebar>(vRebars[i - 1], vRebars[i]), wCache.Geom.Dims.T);
+                                SetParameters(stirrup, ReinforcementPartitionNames.reinfPartName_PStirrups, wCache.PhaseId);
+                            }
                         }
-
-
-
                     }
-
                 }
             }
         }
