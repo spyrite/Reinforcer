@@ -402,12 +402,26 @@ namespace RevitOSA.WallReinforcer.Caching
         }
         public class IntersectionCache : RebarHostCache
         {
+            private readonly GeometryWallCache _geomWallCache;
+
             // Конструкторы
             public IntersectionCache(GeometryWallCache geomWallCache, List<GeometryCache> attachedGeometryCaches, XYZ origin)
             {
+                _geomWallCache = geomWallCache;
                 doc = geomWallCache.Elem.Document;
                 Geom = new GeometryWallCache.IntersectionCache(geomWallCache, attachedGeometryCaches, origin);
                 Reinf = new ReinforcementWallCache.IntersectionCache(geomWallCache.Elem as Wall);
+            }
+
+            public bool AllowCreateRebars()
+            {
+                if (_geomWallCache.Solid == null) _geomWallCache.GetSolidData();
+                for (double k = 0; k < 1.5; k = k+0.5)
+                {
+                    Line cutLine = Line.CreateBound(Geom.Origins.CenterMiddleBottom, Geom.Origins.CenterMiddleBottom + XYZ.BasisZ * (10 / 304.8 + Geom.Dims.H * k));
+                    if (Geom.Solid.IntersectWithCurve(cutLine, null).Any()) return true;
+                }
+                return false;
             }
         }
         public class EndCache : RebarHostCache

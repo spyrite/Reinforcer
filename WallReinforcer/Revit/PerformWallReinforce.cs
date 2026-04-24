@@ -75,16 +75,23 @@ namespace RevitOSA.WallReinforcer.Revit
                     [0,0,0,ReinfSettings.Default.reinf_RebarCover_Edge,
                     ReinfSettings.Default.reinf_Walls_Y_Edge_CenterAlign - c.Reinf.DataX.D,
                     ReinfSettings.Default.reinf_Walls_Y_Edge_CenterAlign - c.Reinf.DataX.D]));
-                
+
                 //Армирование без выпусков
 
-
+                foreach (WallCache wCache in _wCaches.Where(c => c.Reinf.Anchors.Any()))
+                {
+                    if (wCache.Geom.Dims.H >= 1000 / 304.8)
+                    {
+                        CreateVerticalRebarsOnIntersectionsWithColumns(wCache, 50, 10);
+                        CreateVerticalRebarsOnIntersectionsWithWalls(wCache, 10);
+                    }
+                }
 
                 //Армирование c выпусками
 
 
 
-                tx.Commit();
+                    tx.Commit();
             }
 
 
@@ -95,60 +102,82 @@ namespace RevitOSA.WallReinforcer.Revit
 
         private void CreateVerticalRebarsOnIntersectionsWithColumns(WallCache wCache, double offset, double tolerance)
         {
-            if (wCache.Geom.Dims.H >= 1000/304.8)
+            foreach (WallCache.IntersectionCache inter in wCache.Intersections)
             {
-                foreach (WallCache.IntersectionCache inter in wCache.Intersections)
+                inter.AnalyzeForUpperElems();
+                double topAnc = (inter.UpperSlabCaches.Any()
+                    ? inter.UpperSlabCaches.Max(c => c.Geom.Dims.T)
+                    : 0)
+                    + (inter.UpperWallCaches.Cast<RebarHostCache>().Union(inter.UpperColumnCaches.Cast<RebarHostCache>()).Any()
+                    ? ReinforcementTools.ComputeAorOVLength(wCache.Reinf.DataY.D, inter.UpperColumnCaches.Min(c => c.BClass), wCache.Reinf.RClass, AnchorMode.AnchorCompress)
+                    : 0);
+
+                topAnc = topAnc - topAnc > 0 ? 0 : ReinfSettings.Default.reinf_RebarCover_Edge / 304.8;
+                double botOv = (Math.Floor(ReinforcementTools.ComputeAorOVLength(wCache.Reinf.DataY.D, wCache.BClass, wCache.Reinf.RClass, AnchorMode.OverlapCompress)) 
+                    * 1.3 * 304.8 / 10) * 10 / 304.8;
+
+                List<List<int>> coeffs = [[-1, -1, 0], [-1, 1, 1], [1, 1, 0], [1, -1, 1]];
+                Element attachedElement = inter.GetAttachedRebarHosts().FirstOrDefault();
+                RebarHostCache attachmentCache = null;
+                switch (attachedElement)
                 {
-                    inter.AnalyzeForUpperElems();
-                    double topAnc = inter.UpperSlabCaches.Max(c => c.Geom.Dims.T)
-                        + (inter.UpperWallCaches.Cast<RebarHostCache>().Union(inter.UpperColumnCaches.Cast<RebarHostCache>()).Any()
-                        ? ReinforcementTools.ComputeAorOVLength(wCache.Reinf.DataY.D, wCache.BClass, wCache.Reinf.RClass, AnchorMode.AnchorCompress)
-                        : 0);
+                    case Wall:
+                            attachmentCache = new WallCache(attachedElement as Wall);
+                        break;
+                    case FamilyInstance when attachedElement.Category.BuiltInCategory == BuiltInCategory.OST_StructuralColumns:
+                        attachmentCache = new ColumnCache(attachedElement as FamilyInstance);
+                        break;
+                    default:  continue;
+                }
 
-                    topAnc = topAnc - topAnc > 0 ? 0 : ReinfSettings.Default.reinf_RebarCover_Edge / 304.8;
-                    double botOv = (Math.Floor(ReinforcementTools.ComputeAorOVLength(wCache.Reinf.DataY.D, wCache.BClass, wCache.Reinf.RClass, AnchorMode.OverlapCompress)) 
-                        * 1.3 * 304.8 / 10) * 10 / 304.8;
-
-                    List<List<int>> coeffs = [[-1, -1, 0], [-1, 1, 1], [1, 1, 0], [1, -1, 1]];
-                    Element attachedElement = inter.GetAttachedRebarHosts().FirstOrDefault();
-                    RebarHostCache attachmentCache = null;
-                    switch (attachedElement)
+                List<Rebar> vRebars = [];
+                for (int i = 0; i < 4; i++)
+                {
+                    XYZ startPoint = inter.Geom.Origins.CenterMiddleBottom + wCache.Geom.Dirs.X * (offset / 304.8) * coeffs[i][0] - wCache.Geom.Dirs.Y * (offset / 304.8) * coeffs[i][1];
+                    if (!startPoint.IsPointNearHostEdge(wCache.Geom, attachmentCache.Geom, offset, tolerance))
                     {
-                        case Wall:
-                             attachmentCache = new WallCache(attachedElement as Wall);
-                            break;
-                        case FamilyInstance when attachedElement.Category.BuiltInCategory == BuiltInCategory.OST_StructuralColumns:
-                            attachmentCache = new ColumnCache(attachedElement as FamilyInstance);
-                            break;
-                        default:  continue;
-                    }
+                        XYZ p0 = startPoint + XYZ.BasisZ * botOv * coeffs[i][2];
+                        XYZ p1 = startPoint + XYZ.BasisZ * (wCache.Geom.Dims.H + topAnc);
+                        Line vLine = Line.CreateBound(p0, p1);
 
-                    List<Rebar> vRebars = [];
-                    for (int i = 0; i < 4; i++)
-                    {
-                        XYZ startPoint = inter.Geom.Origins.CenterMiddleBottom + wCache.Geom.Dirs.X * (offset / 304.8) * coeffs[i][0] - wCache.Geom.Dirs.Y * (offset / 304.8) * coeffs[i][1];
-                        if (!startPoint.IsPointNearHostEdge(wCache.Geom, attachmentCache.Geom, offset, tolerance))
+                        Rebar vRebar = Rebar.CreateFromCurves(Doc, RebarStyle.Standard, wCache.Reinf.DataY.BarType,
+                            null, null, wCache.Elem, wCache.Geom.Dirs.Y, [vLine], RebarHookOrientation.Left, RebarHookOrientation.Left, true, false);
+                        vRebar.SetVerticalRebarConstarints(wCache.Geom.Faces, attachmentCache.Geom.Faces, wCache.Geom.Dirs.X, attachmentCache.Geom.Dirs.X,
+                            wCache.Reinf.DataX.D, wCache.Reinf.DataY.D, attachmentCache.Reinf.DataY.D);
+                        SetParameters(vRebar, ReinforcementPartitionNames.reinfPartName_VertCorner, wCache.PhaseId);
+                        vRebars.Add(vRebar);
+
+                        if (vRebars.Count == 2 || vRebars.Count == 4)
                         {
-                            XYZ p0 = startPoint + XYZ.BasisZ * botOv * coeffs[i][2];
-                            XYZ p1 = startPoint + XYZ.BasisZ * (wCache.Geom.Dims.H + topAnc);
-                            Line vLine = Line.CreateBound(p0, p1);
-
-                            Rebar vRebar = Rebar.CreateFromCurves(Doc, RebarStyle.Standard, wCache.Reinf.DataY.BarType,
-                                null, null, wCache.Elem, wCache.Geom.Dirs.Y, [vLine], RebarHookOrientation.Left, RebarHookOrientation.Left, true, false);
-                            vRebar.SetVerticalRebarConstarints(wCache.Geom.Faces, attachmentCache.Geom.Faces, wCache.Geom.Dirs.X, attachmentCache.Geom.Dirs.X,
-                                wCache.Reinf.DataX.D, wCache.Reinf.DataY.D, attachmentCache.Reinf.DataY.D);
-                            SetParameters(vRebar, ReinforcementPartitionNames.reinfPartName_VertCorner, wCache.PhaseId);
-                            vRebars.Add(vRebar);
-
-                            if (vRebars.Count == 2 || vRebars.Count == 4)
-                            {
-                                Rebar stirrup = SetStirrup(vRebars[i - 1], vRebars[i], wCache);
-                                stirrup.SetStirrupConstarints(new Tuple<Rebar, Rebar>(vRebars[i - 1], vRebars[i]), wCache.Geom.Dims.T);
-                                SetParameters(stirrup, ReinforcementPartitionNames.reinfPartName_PStirrups, wCache.PhaseId);
-                            }
+                            Rebar stirrup = SetStirrup(vRebars[i - 1], vRebars[i], wCache);
+                            stirrup.SetStirrupConstarints(new Tuple<Rebar, Rebar>(vRebars[i - 1], vRebars[i]), wCache.Geom.Dims.T);
+                            SetParameters(stirrup, ReinforcementPartitionNames.reinfPartName_PStirrups, wCache.PhaseId);
                         }
                     }
                 }
+            }
+            
+        }
+
+        private void CreateVerticalRebarsOnIntersectionsWithWalls(WallCache wCache, double tolerance)
+        {
+            foreach (WallCache.IntersectionCache inter in wCache.Intersections)
+            {
+                inter.AnalyzeForUpperElems();
+                
+                double topAnc = (inter.UpperSlabCaches.Any()
+                    ? inter.UpperSlabCaches.Max(c => c.Geom.Dims.T)
+                    : 0)
+                    + (inter.UpperWallCaches.Cast<RebarHostCache>().Any()
+                    ? ReinforcementTools.ComputeAorOVLength(wCache.Reinf.DataY.D, inter.UpperWallCaches.Min(c => c.BClass), wCache.Reinf.RClass, AnchorMode.OverlapCompress)
+                    : 0);
+
+
+                double botOv = (Math.Floor(ReinforcementTools.ComputeAorOVLength(wCache.Reinf.DataY.D, wCache.BClass, wCache.Reinf.RClass, AnchorMode.OverlapCompress))
+                    * 1.3 * 304.8 / 10) * 10 / 304.8;
+
+                int k = inter.UpperWallCaches.Cast<RebarHostCache>().Any(c => c.Geom.Dims.H >= 1000 / 304.8)
+                    ? 1 : 0;
             }
         }
 
