@@ -16,20 +16,20 @@ using static RevitOSA.WallReinforcer.Resources1P.RevitParameters;
 
 using Line = Autodesk.Revit.DB.Line;
 using ReinfSettings = RevitOSA.WallReinforcer.Properties.Reinforcement;
+using System.Runtime.CompilerServices;
 
 namespace RevitOSA.WallReinforcer.Caching
 {
     public class RebarHostCache
     {
         // Поля
-        private protected Document doc;
-
+        private protected Document _doc;
 
         // Конструкторы
         private protected RebarHostCache() { }
         public RebarHostCache(Element elem)
         {
-            doc = elem.Document;
+            _doc = elem.Document;
             Elem = elem;
 #if REVIT2024 || REVIT2025
             IntId = (int)elem.Id.Value;
@@ -75,36 +75,7 @@ namespace RevitOSA.WallReinforcer.Caching
         public List<WallCache> UpperWallCaches { get; set; }
         public List<ColumnCache> UpperColumnCaches { get; set; }
 
-
         //Методы
-        public void AnalyzeForUpperElems()
-        {
-            UpperSlabCaches = ExtractingTools.GetNearestSlabCaches(Geom, Side.Top);
-            UpperWallCaches = ExtractingTools.GetNearestWallCaches(Geom, Side.Top);
-            UpperColumnCaches = ExtractingTools.GetNearestColumnCaches(Geom, Side.Top);
-        }
-
-        private void GetSheetSetNames()
-        {
-            if (Zone != null)
-            {
-#if COMPANY_FP
-                ResourceSet zonesAndSheetSets = ElemZoneToSheetSet.ResourceManager.GetResourceSet(CultureInfo.CurrentCulture, true, true);
-                foreach (DictionaryEntry entry in zonesAndSheetSets)
-                {
-                    bool condition1 = entry.Key.ToString() == Zone;
-                    bool condition2 = entry.Key.ToString() == Zone.Split(new string[] { " №" }, StringSplitOptions.None).First();
-                    bool condition3 = entry.Key.ToString() == Zone.Split(new string[] { "_№" }, StringSplitOptions.None).First();
-                    if (condition1 || condition2 || condition3)
-                    {
-                        SheetSetNames = entry.Value.ToString();
-                        break;
-                    }
-                }
-#endif
-                if (SheetSetNames == null) SheetSetNames = "КЖ;КЖ.И";
-            }
-        }
         public List<Element> GetAttachedRebarHosts()
         {
             List<Element> attHosts = new List<Element>();
@@ -116,7 +87,7 @@ namespace RevitOSA.WallReinforcer.Caching
                 ElementFilter filter2 = new ElementIntersectsSolidFilter(catchSolid);
                 ElementFilter filter = new LogicalAndFilter(filter1, filter2);
 #if REVIT2024 || REVIT2025
-                attHosts.AddRange(new FilteredElementCollector(doc).OfClass(Elem.GetType()).OfCategory(Elem.Category.BuiltInCategory).WherePasses(filter).ToElements().ToList());
+                attHosts.AddRange(new FilteredElementCollector(_doc).OfClass(Elem.GetType()).OfCategory(Elem.Category.BuiltInCategory).WherePasses(filter).ToElements().ToList());
 #else
                 attHosts.AddRange(new FilteredElementCollector(doc).OfClass(Elem.GetType()).OfCategory((BuiltInCategory)Elem.Category.Id.IntegerValue).WherePasses(filter).ToElements().ToList());
 #endif
@@ -125,9 +96,13 @@ namespace RevitOSA.WallReinforcer.Caching
 
             return attHosts;
         }
+
+
+
+        #region Перегородки
         public void GetPartitionIds(List<Document> docs)
         {
-            Solid catchSolid = GeometryTools.GetScaledSolid(Elem, 20);
+            Solid catchSolid = SolidTools.GetScaledSolid(Elem, 20);
             PartitionIds = new List<ElementId>();
             foreach (Document doc in docs) PartitionIds.AddRange(new ExtractingTools.PartitionExtractor(doc, catchSolid).ToElementIds());
         }
@@ -237,7 +212,7 @@ namespace RevitOSA.WallReinforcer.Caching
         public List<XYZ> GetPartitionCIOrigins(Attachment att)
         {
             List<XYZ> origins = new List<XYZ>();
-            att.PCache.Geom.GetSolidData(doc);
+            att.PCache.Geom.GetSolidData(_doc);
 
             if (att.PCache.Geom.Solid != null)
             {
@@ -259,7 +234,72 @@ namespace RevitOSA.WallReinforcer.Caching
             }
             return origins;
         }
+        #endregion
 
+        public double GetTopOv(double d, string RClass, double heightLimit, double rebarCoverEdge, out int k)
+        {
+            double topAnc = UpperSlabCaches.Any() ? UpperSlabCaches.Max(c => c.Geom.Dims.T) : 0;
+            k = 0;
+
+            if (UpperWallCaches.Any())
+            {
+                WallCache upperWallCache1 = UpperWallCaches.Find(c => c.BClass == UpperWallCaches.Min(c => c.BClass));
+                if (upperWallCache1.Geom.Dims.H >= heightLimit)
+                {
+                    topAnc += ReinforcementTools.ComputeAorOVLength(d, upperWallCache1.BClass, RClass, AnchorMode.OverlapCompress);
+                    k = 1;
+                }
+                else
+                {
+                    upperWallCache1.AnalyzeForUpperElems();
+                    topAnc += upperWallCache1.Geom.Dims.H + (upperWallCache1.UpperSlabCaches.Any() ? upperWallCache1.UpperSlabCaches.Max(c => c.Geom.Dims.T) : 0);
+                    if (upperWallCache1.UpperWallCaches.Any())
+                    {
+                        WallCache upperWallCache2 = upperWallCache1.UpperWallCaches.Find(c => c.BClass == upperWallCache1.UpperWallCaches.Min(c => c.BClass));
+                        topAnc += ReinforcementTools.ComputeAorOVLength(d, upperWallCache2.BClass, RClass, AnchorMode.OverlapCompress);
+                        k = 1;
+                    }
+                    else topAnc -= rebarCoverEdge;
+                }
+            }
+            else topAnc -= rebarCoverEdge;
+            return topAnc;
+        }
+
+        public double GetTopAnc(double d, string RClass, double rebarCoverEdge)
+        {
+            AnalyzeForUpperElems();
+            double topAnc = (UpperSlabCaches.Any()
+                            ? UpperSlabCaches.Max(c => c.Geom.Dims.T)
+                            : 0)
+                            + (UpperWallCaches.Cast<RebarHostCache>().Union(UpperColumnCaches.Cast<RebarHostCache>()).Any()
+                            ? ReinforcementTools.ComputeAorOVLength(d, UpperColumnCaches.Min(c => c.BClass), RClass, AnchorMode.AnchorCompress)
+                            : 0);
+            topAnc -= topAnc > 0 ? 0 : rebarCoverEdge;
+            return topAnc;
+        }
+
+        private void GetSheetSetNames()
+        {
+            if (Zone != null)
+            {
+#if COMPANY_FP
+                ResourceSet zonesAndSheetSets = ElemZoneToSheetSet.ResourceManager.GetResourceSet(CultureInfo.CurrentCulture, true, true);
+                foreach (DictionaryEntry entry in zonesAndSheetSets)
+                {
+                    bool condition1 = entry.Key.ToString() == Zone;
+                    bool condition2 = entry.Key.ToString() == Zone.Split(new string[] { " №" }, StringSplitOptions.None).First();
+                    bool condition3 = entry.Key.ToString() == Zone.Split(new string[] { "_№" }, StringSplitOptions.None).First();
+                    if (condition1 || condition2 || condition3)
+                    {
+                        SheetSetNames = entry.Value.ToString();
+                        break;
+                    }
+                }
+#endif
+                if (SheetSetNames == null) SheetSetNames = "КЖ;КЖ.И";
+            }
+        }
         private List<XYZ> GetLintelOriginsInPartitionAttachment(Attachment att)
         {
             List<XYZ> lintelOrigins = new List<XYZ>();

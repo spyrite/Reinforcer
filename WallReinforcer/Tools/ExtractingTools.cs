@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB.Structure;
 using RevitOSA.WallReinforcer.Assistants;
 using RevitOSA.WallReinforcer.Caching;
+using RevitOSA.WallReinforcer.Customs;
 using RevitOSA.WallReinforcer.Resources;
 using RevitOSA.WallReinforcer.Revit.Filters;
 using System;
@@ -366,7 +367,7 @@ namespace RevitOSA.WallReinforcer.Tools
 
             foreach (PlanarFace face in faces)
                 hostCaches.AddRange(from elem in GetAttachedElements(face, collector, dst)
-                                    select GetHostCache(elem));
+                                    select GetRebarHostCache(elem));
             return hostCaches;
         }
         public static List<SlabCache> GetNearestSlabCaches(GeometryCache geomCache, Side side)
@@ -510,69 +511,11 @@ namespace RevitOSA.WallReinforcer.Tools
             }
             return colCaches;
         }
-        public static List<WallCache.IntersectionCache> GetWallIntersectionCaches(GeometryWallCache geomWallCache)
-        {
-            // Инициализация
-            Document doc = geomWallCache.Elem.Document;
-            List<WallCache.IntersectionCache> intersectionCaches = new List<WallCache.IntersectionCache>();
-            List<ElementFilter> filters = new List<ElementFilter>
-            {
-                StructureElementFilters.ColumnsOrWalls,
-                new ElementLevelFilter(geomWallCache.LvlIds.Bot),
-            };
-            ElementFilter filter = new LogicalAndFilter(filters);
-            FilteredElementCollector collector = new FilteredElementCollector(doc).WherePasses(filter);
-
-            // Поиск примыкающих элементов и точек пересечений
-            if (geomWallCache.Solid == null) geomWallCache.GetSolidData();
-            List<GeometryCache> allAttachedGeomCaches = new List<GeometryCache>();
-            Dictionary<XYZ, XYZ> intersectionOriginsData = new Dictionary<XYZ, XYZ>();
-            foreach (PlanarFace face in geomWallCache.Faces.SideLong)
-            {
-                List<GeometryCache> attachedGeomCaches = (from elem in GetAttachedElements(face, collector, 10 / 304.8)
-                                                          select GetGeometryCache(elem)).ToList();
-                allAttachedGeomCaches.AddRange(attachedGeomCaches);
-                Plane plane = geomWallCache.UnboundFaces.Center;
-                foreach (GeometryCache attachedGeomCache in attachedGeomCaches)
-                {
-                    plane.Project(attachedGeomCache.Origins.CenterMiddleBottom, out UV uv, out _);
-                    XYZ origin = new XYZ(plane.Origin.X + uv.U, plane.Origin.Y + uv.V, geomWallCache.Dims.ZBot);
-                    if (!intersectionOriginsData.Keys.Contains(origin)) intersectionOriginsData.Add(origin, face.FaceNormal);
-                }
-            }
-            foreach (PlanarFace face in geomWallCache.Faces.SideShort)
-            {
-                List<GeometryCache> attachedGeomCaches = (from elem in GetAttachedElements(face, collector, 10 / 304.8)
-                                                          select GetGeometryCache(elem)).ToList();
-                allAttachedGeomCaches.AddRange(attachedGeomCaches);
-                foreach (GeometryCache attachedGeomCache in attachedGeomCaches)
-                {
-                    XYZ origin = face.Project(attachedGeomCache.Origins.CenterMiddleBottom).XYZPoint;
-                    if (!intersectionOriginsData.Keys.Contains(origin)) intersectionOriginsData.Add(origin, face.FaceNormal);
-                }
-            }
-
-            // Сбор данных по пересечниям
-            foreach (XYZ origin in intersectionOriginsData.Keys)
-            {
-                List<XYZ> points = new List<XYZ>
-                {
-                    origin - GeometryTools.VecABS(intersectionOriginsData[origin]) * 10 / 304.8,
-                    origin + GeometryTools.VecABS(intersectionOriginsData[origin]) * 10 / 304.8 + geomWallCache.Dirs.Z * geomWallCache.Dims.H
-                };
-                Outline outline = new Outline(points.First(), points.Last());
-                filter = new BoundingBoxIntersectsFilter(outline);
-                List<GeometryCache> attachedGeometryCaches = (from geomCache in allAttachedGeomCaches
-                                                              where filter.PassesFilter(geomCache.Elem)
-                                                              select geomCache).ToList();
-                intersectionCaches.Add(new WallCache.IntersectionCache(geomWallCache, attachedGeometryCaches, origin));
-            }
-            return intersectionCaches;
-        }
-        public static List<WallCache.EndCache> GetWallEndCaches(GeometryWallCache geomWallCache)
+        
+        public static List<WallEndCache> GetWallEndCaches(GeometryWallCache geomWallCache)
         {
             Document doc = geomWallCache.Elem.Document;
-            List<WallCache.EndCache> endCaches = new List<WallCache.EndCache> { null, null };
+            List<WallEndCache> endCaches = new List<WallEndCache> { null, null };
             List<ElementFilter> filters = new List<ElementFilter>
             {
                 StructureElementFilters.ColumnsOrWalls,
@@ -606,7 +549,7 @@ namespace RevitOSA.WallReinforcer.Tools
                 {
                     XYZ origin = endPoints[i];
                     XYZ xDir = geomWallCache.Dirs.X * tokens[i];
-                    WallCache.EndCache endCache = new WallCache.EndCache(geomWallCache, origin, xDir);
+                    WallEndCache endCache = new WallEndCache(geomWallCache, origin, xDir);
                 }
             }
             ;
@@ -642,7 +585,7 @@ namespace RevitOSA.WallReinforcer.Tools
             }
             return equalUpperVoidAtEnds;
         }
-        public static RebarHostCache GetHostCache(Element elem)
+        public static RebarHostCache GetRebarHostCache(this Element elem)
         {
             if (StructureElementFilters.Walls.PassesFilter(elem))
                 return new WallCache(elem as Wall);
@@ -656,7 +599,7 @@ namespace RevitOSA.WallReinforcer.Tools
                 return null;
         }
 
-        private static List<Element> GetAttachedElements(PlanarFace face, FilteredElementCollector collector, double dst)
+        public static List<Element> GetAttachedElements(this PlanarFace face, FilteredElementCollector collector, double dst)
         {
             Solid catchSolid = GeometryCreationUtilities.CreateExtrusionGeometry(face.GetEdgesAsCurveLoops(), face.FaceNormal, dst);
             ElementFilter secondaryFilter = new ElementIntersectsSolidFilter(catchSolid);
@@ -664,20 +607,6 @@ namespace RevitOSA.WallReinforcer.Tools
                                            where secondaryFilter.PassesFilter(elem)
                                            select elem).ToList();
             return attachedElems;
-        }
-
-        private static GeometryCache GetGeometryCache(Element elem)
-        {
-            if (StructureElementFilters.Walls.PassesFilter(elem))
-                return new GeometryWallCache(elem as Wall);
-            else if (StructureElementFilters.Columns.PassesFilter(elem))
-                return new GeometryColumnCache(elem as FamilyInstance);
-            else if (StructureElementFilters.Floors.PassesFilter(elem))
-                return new GeometrySlabCache(elem as Floor);
-            else if (StructureElementFilters.Beams.PassesFilter(elem))
-                return new GeometryBeamCache(elem as FamilyInstance);
-            else
-                return null;
         }
         #endregion
 

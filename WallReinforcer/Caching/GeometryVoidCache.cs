@@ -16,7 +16,7 @@ namespace RevitOSA.WallReinforcer.Caching
 
         public GeometryVoidCache(Wall wall, double hostThickness) : base(wall)
         {
-            preCalculations =
+            /*preCalculations =
             [
                 ((wall.Location as LocationCurve).Curve as Line).Direction,
                 wall.Orientation,
@@ -59,6 +59,61 @@ namespace RevitOSA.WallReinforcer.Caching
                 CenterStartTop = (preCalculations[2] as XYZ) + Dirs.Z * Dims.H,
                 CenterMiddleTop = (preCalculations[2] as XYZ) + Dirs.X * Dims.L / 2 + Dirs.Z * Dims.H,
                 CenterEndTop = (preCalculations[2] as XYZ) + Dirs.X * Dims.L + Dirs.Z * Dims.H,
+            };*/
+
+            // 1. Получаем явные значения вместо смешанного списка object
+            Line locationLine = (wall.Location as LocationCurve).Curve as Line 
+                ?? throw new System.InvalidOperationException("Wall location is not a line.");
+            XYZ direction = locationLine.Direction; // Local X
+            XYZ orientation = wall.Orientation;     // Local Y (Normal)
+            XYZ baseOffsetVec = XYZ.BasisZ * wall.get_Parameter(BuiltInParameter.WALL_BASE_OFFSET).AsDouble();
+
+            // Вектор от базовой точки проекта до начала линии стены + смещение по Z
+            // Примечание: BasePoint.Position должен быть определен в базовом классе
+            XYZ startVector = locationLine.GetEndPoint(0) - BasePoint.Position + baseOffsetVec;
+
+            double height = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM).AsDouble();
+            double length = locationLine.Length;
+            double baseOffsetValue = wall.get_Parameter(BuiltInParameter.WALL_BASE_OFFSET).AsDouble();
+
+            // 2. Инициализация направлений
+            Dirs = new Directions
+            {
+                X = direction,
+                Y = orientation,
+                Z = direction.CrossProduct(orientation) // Локальная ось Z (вертикаль)
+            };
+
+            // 3. Инициализация размеров
+            Dims = new ControlDimensions
+            {
+                H = height,
+                B = hostThickness, // Толщина хоста
+                L = length,
+                ZBot = startVector.Z, // Глобальная Z низа стены
+                ZTop = startVector.Z + height,
+                OffsetBot = baseOffsetValue, // Смещение основания относительно уровня
+                OffsetTop = baseOffsetValue + height
+            };
+
+            // 4. Инициализация контрольных точек
+            // Используем явные вычисления для читаемости
+            XYZ startBottom = startVector;
+            XYZ endBottom = startVector + direction * length;
+            XYZ startTop = startVector + Dirs.Z * height;
+            XYZ endTop = startVector + direction * length + Dirs.Z * height;
+
+            Origins = new ControlPoints
+            {
+                CenterStartBottom = startBottom,
+                CenterMiddleBottom = startBottom + direction * (length / 2.0),
+                CenterEndBottom = endBottom,
+
+                CenterMiddleMiddle = startBottom + direction * (length / 2.0) + Dirs.Z * (height / 2.0),
+
+                CenterStartTop = startTop,
+                CenterMiddleTop = startTop + direction * (length / 2.0),
+                CenterEndTop = endTop
             };
         }
 
@@ -84,6 +139,21 @@ namespace RevitOSA.WallReinforcer.Caching
             }
             return attachedFaces;
         }
+        public List<PlanarFace> GetAttachedFaces(Solid solid)
+        {
+            List<PlanarFace> attachedFaces = new List<PlanarFace>();
+
+            foreach (PlanarFace face in Faces.FrontContour)
+            {
+                XYZ center = face.Evaluate(new UV(10 / 304.8, 10 / 304.8));
+                Line cutLine = Line.CreateBound(center, center + face.FaceNormal.Normalize() * 10 / 304.8);
+                List<Curve> spotLines = solid.IntersectWithCurve(cutLine, null).ToList();
+                if (spotLines.Count == 0) attachedFaces.Add(face);
+            }
+            return attachedFaces;
+        }
+
+
         public List<PlanarFace> GetBoundFaces(WallCache wallCache)
         {
             if (wallCache.Geom.Solid == null) wallCache.Geom.GetSolidData();

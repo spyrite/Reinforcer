@@ -46,7 +46,7 @@ namespace RevitOSA.WallReinforcer.Tools
             AssemblyInstance ai = AssemblyInstance.Create(doc, new List<ElementId> { sourceInst.Id }, categoryId);
             if (ai != null)
             {
-                Solid sourceSolid = GeometryTools.GetSolid(sourceInst, false);
+                Solid sourceSolid = SolidTools.GetSolid(sourceInst, false);
 
                 if (sourceSolid != null)
                 {

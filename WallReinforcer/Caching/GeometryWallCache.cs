@@ -13,7 +13,7 @@ namespace RevitOSA.WallReinforcer.Caching
         // Конструкторы
         public GeometryWallCache(Wall wall) : base(wall)
         {
-            preCalculations = new List<object>
+            /*preCalculations = new List<object>
             {
                 wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM).AsDouble(),
                 wall.get_Parameter(BuiltInParameter.WALL_BASE_OFFSET).AsDouble()
@@ -57,6 +57,96 @@ namespace RevitOSA.WallReinforcer.Caching
                 CenterBot = Line.CreateBound(Origins.CenterStartBottom, Origins.CenterEndBottom),
                 CenterTop = Line.CreateBound(Origins.CenterStartTop, Origins.CenterEndTop)
             };
+            Outline = new Outline(wall.get_BoundingBox(null).Min, wall.get_BoundingBox(null).Max);*/
+
+            // 1. Получаем явные параметры и геометрию
+            double height = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM).AsDouble();
+            double baseOffset = wall.get_Parameter(BuiltInParameter.WALL_BASE_OFFSET).AsDouble();
+            double topOffset = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET).AsDouble();
+
+            Line locationLine = (wall.Location as LocationCurve)?.Curve as Line;
+            if (locationLine == null)
+                throw new InvalidOperationException("Wall location is not a line.");
+
+            XYZ direction = locationLine.Direction; // Local X
+            XYZ orientation = wall.Orientation;     // Local Y
+
+            // 2. Инициализация уровней
+            LvlIds = new LevelIds
+            {
+                Bot = wall.get_Parameter(BuiltInParameter.WALL_BASE_CONSTRAINT).AsElementId(),
+                Top = wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE).AsElementId(),
+                Base = wall.get_Parameter(BuiltInParameter.WALL_BASE_CONSTRAINT).AsElementId()
+            };
+
+            // 3. Инициализация направлений
+            Dirs = new Directions
+            {
+                X = direction,
+                Y = orientation,
+                Z = XYZ.BasisZ // Для прямых стен вертикаль всегда глобальная Z
+            };
+
+            // 4. Расчет размеров и координат
+            // Получаем уровень основания для расчета абсолютных высот
+            Level baseLevel = doc.GetElement(LvlIds.Bot) as Level;
+            if (baseLevel == null)
+                throw new InvalidOperationException("Base level not found.");
+
+            double baseLevelElevation = baseLevel.Elevation;
+            double zBot = baseLevelElevation + baseOffset;
+            double zTop = zBot + height;
+
+            Dims = new ControlDimensions
+            {
+                L = locationLine.Length,
+                T = wall.Width,
+                H = height,
+                OffsetBot = baseOffset,
+                OffsetTop = topOffset,
+                ZBot = zBot,
+                ZTop = zTop
+            };
+
+            // 5. Расчет контрольных точек
+            // Базовая линия стены с учетом смещения по Z относительно BasePoint
+            // В оригинале была сложная трансформация. Здесь упрощаем:
+            // StartPoint линии локации + смещение по Z
+
+            XYZ startPtRaw = locationLine.GetEndPoint(0);
+            // Корректируем Z точки старта, если BasePoint.Position.Z отличается от 0 или уровня проекта
+            // Обычно в Revit координаты уже глобальные, но если используется BasePoint:
+            double zCorrection = Dirs.Z.Z * (baseOffset - BasePoint.Position.Z);
+            // Примечание: Если BasePoint.Position.Z == 0, то zCorrection = baseOffset.
+            // Если логика оригинала подразумевала сдвиг всей линии на вектор, делаем так:
+
+            XYZ shiftVector = Dirs.Z * (baseOffset - BasePoint.Position.Z);
+            XYZ startPt = startPtRaw + shiftVector;
+            XYZ endPt = locationLine.GetEndPoint(1) + shiftVector;
+
+            // Создаем линию основания для удобства вычислений
+            Line baseLine = Line.CreateBound(startPt, endPt);
+
+            Origins = new ControlPoints
+            {
+                CenterStartBottom = baseLine.GetEndPoint(0),
+                CenterMiddleBottom = baseLine.Evaluate(0.5, true),
+                CenterEndBottom = baseLine.GetEndPoint(1),
+
+                CenterMiddleMiddle = baseLine.Evaluate(0.5, true) + Dirs.Z * (height / 2.0),
+
+                CenterStartTop = baseLine.GetEndPoint(0) + Dirs.Z * height,
+                CenterMiddleTop = baseLine.Evaluate(0.5, true) + Dirs.Z * height,
+                CenterEndTop = baseLine.GetEndPoint(1) + Dirs.Z * height
+            };
+
+            Lines = new ControlLines
+            {
+                CenterBot = baseLine,
+                CenterTop = Line.CreateBound(Origins.CenterStartTop, Origins.CenterEndTop)
+            };
+
+            // 6. BoundingBox
             Outline = new Outline(wall.get_BoundingBox(null).Min, wall.get_BoundingBox(null).Max);
         }
 
@@ -287,28 +377,28 @@ namespace RevitOSA.WallReinforcer.Caching
             // Методы
             public override void GetSolidData()
             {
-                List<List<int>> tokenSets = new List<List<int>>
-                {
-                    new List<int> {0, -1},
-                    new List<int> {1, -1},
-                    new List<int> {1, 1},
-                    new List<int> {0, 1}
-                };
+                List<List<int>> tokenSets =
+                [
+                    [0, -1],
+                    [1, -1],
+                    [1, 1],
+                    [0, 1]
+                ];
 
-                List<XYZ> points = new List<XYZ>();
+                List<XYZ> points = [];
                 foreach (List<int> tokens in tokenSets)
                 {
                     XYZ point = Origins.CenterMiddleBottom + Dirs.X * (Dims.L / 2) * tokens[0] + Dirs.Y * (Dims.T / 2) * tokens[1];
                     points.Add(point);
                 }
 
-                List<Curve> lines = new List<Curve>
-                {
+                List<Curve> lines =
+                [
                     Line.CreateBound(points[0], points[1]),
                     Line.CreateBound(points[1], points[2]),
                     Line.CreateBound(points[2], points[3]),
                     Line.CreateBound(points[3], points[0])
-                };
+                ];
 
                 Solid = GeometryCreationUtilities.CreateExtrusionGeometry(new List<CurveLoop> { CurveLoop.Create(lines) }, Dirs.Z, Dims.H);
             }

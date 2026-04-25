@@ -35,7 +35,7 @@ namespace RevitOSA.WallReinforcer.Transfer
         public static void CopyFromHostToHosts(Element elem, List<Element> targetHosts)
         {
             // Инициализация
-            sourceRHC = GetHostCache(elem);
+            sourceRHC = elem.GetRebarHostCache();
             doc = sourceRHC.Elem.Document;
             sourceRebarHostMembers = GetRebarHostMembers(sourceRHC.Elem);
             GetSourceWorksets();
@@ -45,7 +45,7 @@ namespace RevitOSA.WallReinforcer.Transfer
 
             foreach (Element targetHost in targetHosts)
             {
-                targetRHC = GetHostCache(targetHost);
+                targetRHC = targetHost.GetRebarHostCache();
 
                 // Сопоставление защитных слоёв исходного хоста и целевого хоста
                 if (sourceRHC.Elem.GetType() == targetHost.GetType()) RebarCoverAssistant.SetRebarCoversToHost(targetHost, sourceCoverIds);
@@ -215,6 +215,7 @@ namespace RevitOSA.WallReinforcer.Transfer
                 RebarHostTools.SetHostParameters(ai, hostCache, sourceWorksets[typeof(AssemblyInstance)]);
             }
         }
+
         /*private static void CopyMembersToTempHost(Type membersType)
         {
             if (sourceRebarHostMembers.ContainsKey(membersType) && sourceRebarHostMembers[membersType].Count > 0)
@@ -299,7 +300,7 @@ namespace RevitOSA.WallReinforcer.Transfer
         }
         private static void CreateTempHost1AsFloor()
         {
-            Solid sourceSolid = GeometryTools.GetSolid(sourceRHC.Elem, false);
+            Solid sourceSolid = SolidTools.GetSolid(sourceRHC.Elem, false);
             XYZ origin = sourceSolid.ComputeCentroid();
             List<XYZ> points = new List<XYZ>
             {

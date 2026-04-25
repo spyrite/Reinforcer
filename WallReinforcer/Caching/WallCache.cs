@@ -8,7 +8,7 @@ using RevitOSA.WallReinforcer.Assistants;
 using RevitOSA.WallReinforcer.Tools;
 using RevitOSA.WallReinforcer.Resources;
 using RevitOSA.WallReinforcer.Revit.Filters;
-
+using static RevitOSA.WallReinforcer.Assistants.Sorting;
 
 
 
@@ -26,6 +26,9 @@ namespace RevitOSA.WallReinforcer.Caching
 {
     public class WallCache : RebarHostCache
     {
+        //Поля
+        private protected bool _isAnalyzedForSubCaches;
+
         // Конструкторы
         public WallCache(Element elem) : base(elem)
         {
@@ -37,7 +40,7 @@ namespace RevitOSA.WallReinforcer.Caching
             if (compoundStructure != null)
             {
                 Layers = compoundStructure.GetLayers().ToList();
-                Material material = doc.GetElement(Wall.WallType.GetCompoundStructure().GetLayers().ToList().First().MaterialId) as Material;
+                Material material = _doc.GetElement(Wall.WallType.GetCompoundStructure().GetLayers().ToList().First().MaterialId) as Material;
                 if (ElementParametersAssistant.IsParameterExistAndHasValue(material, pp_BClass))
                 {
                     Parameter par = material.GetParameters(pp_BClass).First();
@@ -55,41 +58,36 @@ namespace RevitOSA.WallReinforcer.Caching
                     }
                 }
             }
+
+            _isAnalyzedForSubCaches = false;
         }
 
         // Методы
-        public void AnalyzeForSubCaches()
+        public void AnalyzeForSubCaches(double catchDeep)
         {
+            CatchDeep = catchDeep;
+
             // Поиск вышележащих элементов, распределение
             if (Geom.Solid == null) Geom.GetSolidData();
-            List<RebarHostCache> allUpperHostCaches = ExtractingTools.GetNearestHostCaches(Geom, Geom.Faces.Top, Side.Top, 500 / 304.8);
-            UpperSlabCaches = [];
-            UpperWallCaches = [];
-            UpperColumnCaches = [];
-            foreach (RebarHostCache hostCache in allUpperHostCaches)
-            {
-                switch (hostCache.GetType().Name)
-                {
-                    case "SlabCache": UpperSlabCaches.Add(hostCache as SlabCache); break;
-                    case "WallCache": UpperWallCaches.Add(hostCache as WallCache); break;
-                    case "ColumnCache": UpperColumnCaches.Add(hostCache as ColumnCache); break;
-                }
-            }
+            List<RebarHostCache> allUpperHostCaches = ExtractingTools.GetNearestHostCaches(Geom, Geom.Faces.Top, Side.Top, catchDeep);
+            UpperSlabCaches = [.. allUpperHostCaches.OfType<SlabCache>()];
+            UpperWallCaches = [.. allUpperHostCaches.OfType<WallCache>()];
+            UpperColumnCaches = [.. allUpperHostCaches.OfType<ColumnCache>()];
 
             // Поиск нижележащих элементов
-            List<RebarHostCache> allLowerHostCaches = ExtractingTools.GetNearestHostCaches(Geom, Geom.Faces.Bottom, Side.Bottom, 500 / 304.8);
+            List<RebarHostCache> allLowerHostCaches = ExtractingTools.GetNearestHostCaches(Geom, Geom.Faces.Bottom, Side.Bottom, catchDeep);
 
             // Поиск пересечений, окончаний, деление на регионы
-            Intersections = ExtractingTools.GetWallIntersectionCaches(Geom as GeometryWallCache);
+            Intersections = this.GetWallIntersectionCaches();
             Ends = ExtractingTools.GetWallEndCaches(Geom as GeometryWallCache);
             Regions = GetWallRegionCaches();
 
             // Деление каждого региона вышележащими элементами
             for (int i = 0; i < Regions.Count; i++)
             {
-                RegionCache regionCache = Regions[i];
-                List<RegionCache> splittedRegionCaches = new List<RegionCache>();
-                List<RebarHostCache> upperHostCaches = regionCache.GetNearestHostCaches(allUpperHostCaches, Side.Top, 500 / 304.8);
+                WallRegionCache regionCache = Regions[i];
+                List<WallRegionCache> splittedRegionCaches = new List<WallRegionCache>();
+                List<RebarHostCache> upperHostCaches = regionCache.GetNearestHostCaches(allUpperHostCaches, Side.Top, catchDeep);
                 foreach (RebarHostCache upperHostCache in upperHostCaches)
                 {
                     WallSubCaches upperSubCaches = regionCache.SplitByAnotherHost(upperHostCache);
@@ -107,9 +105,9 @@ namespace RevitOSA.WallReinforcer.Caching
             // Деление каждого региона нижележащими элементами
             for (int i = 0; i < Regions.Count; i++)
             {
-                RegionCache regionCache = Regions[i];
-                List<RegionCache> splittedRegionCaches = new List<RegionCache>();
-                List<RebarHostCache> lowerHostCaches = regionCache.GetNearestHostCaches(allLowerHostCaches, Side.Bottom, 500 / 304.8);
+                WallRegionCache regionCache = Regions[i];
+                List<WallRegionCache> splittedRegionCaches = new List<WallRegionCache>();
+                List<RebarHostCache> lowerHostCaches = regionCache.GetNearestHostCaches(allLowerHostCaches, Side.Bottom, catchDeep);
                 foreach (RebarHostCache lowerHostCache in lowerHostCaches)
                 {
                     WallSubCaches lowerSubCaches = regionCache.SplitByAnotherHost(lowerHostCache);
@@ -123,29 +121,31 @@ namespace RevitOSA.WallReinforcer.Caching
                     Intersections.AddRange(lowerSubCaches.Intersections);
                 }
             }
-        }
 
+            _isAnalyzedForSubCaches = true;
+        }
         public void GetVoidCaches()
         {
             List<VoidCache> voidCaches = ExtractingTools.ExtractVoidCaches(Elem);
-            Voids = (from voidCache in voidCaches
+            Voids = [.. (from voidCache in voidCaches
                      where !voidCache.IsOpening
-                     select voidCache).ToList();
+                     select voidCache)];
         }
 
-        private List<RegionCache> GetWallRegionCaches()
+        private List<WallRegionCache> GetWallRegionCaches()
         {
             // Инициализация
-            List<RegionCache> regionCaches = new List<RegionCache>();
-            List<XYZ> newWallRegionsPoints = new List<XYZ>();
-
-            // Деление на регионы окончаниями и пересечениями
-            newWallRegionsPoints.AddRange(GetWallRegionsPointsFromEnds());
-            newWallRegionsPoints.AddRange(GetWallRegionsPointsFromIntersections());
+            List<WallRegionCache> regionCaches = [];
+            List<XYZ> newWallRegionsPoints =
+            [
+                // Деление на регионы окончаниями и пересечениями
+                .. GetWallRegionsPointsFromEnds(),
+                .. GetWallRegionsPointsFromIntersections(),
+            ];
             newWallRegionsPoints = newWallRegionsPoints.OrderBy(point => point, new Sorting.XYZCoordsComparer()).ToList();
             for (int i = 1; i < newWallRegionsPoints.Count - 1; i += 2)
             {
-                RegionCache regionCache = new RegionCache(Geom as GeometryWallCache, newWallRegionsPoints[i], newWallRegionsPoints[i + 1]);
+                WallRegionCache regionCache = new WallRegionCache(this, newWallRegionsPoints[i], newWallRegionsPoints[i + 1]);
                 regionCaches.Add(regionCache);
             }
 
@@ -153,11 +153,11 @@ namespace RevitOSA.WallReinforcer.Caching
             List<XYZ> wallRegionsPointsFromVoids = GetWallRegionsPointsFromVoids().OrderBy(point => point, new Sorting.XYZCoordsComparer()).ToList();
             for (int i = 0; i < regionCaches.Count; i++)
             {
-                RegionCache regionCache = regionCaches[i];
+                WallRegionCache regionCache = regionCaches[i];
                 List<XYZ> splitPoints = GeometryTools.GetFilteredPointsInSightOfHostCache(wallRegionsPointsFromVoids, regionCache.Geom);
                 if (splitPoints.Count > 0)
                 {
-                    List<RegionCache> splittedRegionCaches = regionCache.SplitByPoints(splitPoints);
+                    List<WallRegionCache> splittedRegionCaches = regionCache.SplitByPoints(splitPoints);
                     if (splittedRegionCaches != null)
                     {
                         regionCaches.RemoveAt(i);
@@ -168,11 +168,11 @@ namespace RevitOSA.WallReinforcer.Caching
 
             return regionCaches;
         }
-        private protected List<XYZ> GetWallRegionsPointsFromEnds()
+        public List<XYZ> GetWallRegionsPointsFromEnds()
         {
             List<XYZ> regionsPoints = new List<XYZ>();
             if (Ends == null) Ends = ExtractingTools.GetWallEndCaches(Geom as GeometryWallCache);
-            foreach (EndCache end in Ends)
+            foreach (WallEndCache end in Ends)
             {
                 if (end != null)
                 {
@@ -187,11 +187,11 @@ namespace RevitOSA.WallReinforcer.Caching
             regionsPoints = regionsPoints.OrderBy(point => point, new Sorting.XYZCoordsComparer()).ToList();
             return regionsPoints;
         }
-        private protected List<XYZ> GetWallRegionsPointsFromIntersections()
+        public List<XYZ> GetWallRegionsPointsFromIntersections()
         {
             List<XYZ> regionsPoints = new List<XYZ>();
-            if (Intersections == null) Intersections = ExtractingTools.GetWallIntersectionCaches(Geom as GeometryWallCache);
-            foreach (IntersectionCache intersection in Intersections)
+            if (Intersections == null) Intersections = GetWallIntersectionCaches();
+            foreach (WallIntersectionCache intersection in Intersections)
             {
                 List<XYZ> splitPoints = new List<XYZ>
                 {
@@ -203,7 +203,7 @@ namespace RevitOSA.WallReinforcer.Caching
             regionsPoints = regionsPoints.OrderBy(point => point, new Sorting.XYZCoordsComparer()).ToList();
             return regionsPoints;
         }
-        private protected List<XYZ> GetWallRegionsPointsFromVoids()
+        public List<XYZ> GetWallRegionsPointsFromVoids()
         {
             List<XYZ> regionsPoints = new List<XYZ>();
             if (Reinf.Anchors == null) Reinf.GetAnchors(Geom);
@@ -233,214 +233,73 @@ namespace RevitOSA.WallReinforcer.Caching
             return regionsPoints;
         }
 
-        // Подклассы
-        public class RegionCache : RebarHostCache
+        private List<WallIntersectionCache> GetWallIntersectionCaches()
         {
-            // Поля
-            private protected GeometryWallCache geomWallCache;
+            // Инициализация
+            Document doc = this.Elem.Document;
+            List<WallIntersectionCache> intersectionCaches = [];
+            List<ElementFilter> filters =
+            [
+                StructureElementFilters.ColumnsOrWalls,
+                new ElementLevelFilter(this.Geom.LvlIds.Bot),
+            ];
+            ElementFilter filter = new LogicalAndFilter(filters);
+            FilteredElementCollector collector = new FilteredElementCollector(doc).WherePasses(filter);
 
-            // Конструкторы
-            public RegionCache(GeometryWallCache geomWallCache, XYZ startPoint, XYZ endPoint)
+            // Поиск примыкающих элементов и точек пересечений
+            if (this.Geom.Solid == null) this.Geom.GetSolidData();
+            List<RebarHostCache> allAttachedCaches = [];
+            Dictionary<XYZ, XYZ> intersectionOriginsData = new(new XYZEqualityComparer());
+
+            foreach (PlanarFace face in this.Geom.Faces.SideLong)
             {
-                this.geomWallCache = geomWallCache;
-                Geom = new GeometryWallCache.RegionCache(geomWallCache, startPoint, endPoint);
-                Reinf = new ReinforcementWallCache.RegionCache(geomWallCache.Elem as Wall);
-            }
+                List<RebarHostCache> attachedCaches = [.. face.GetAttachedElements(collector, 10 / 304.8).Select(elem => elem.GetRebarHostCache())];
+                allAttachedCaches.AddRange(attachedCaches);
+                Plane plane = this.Geom.UnboundFaces.Center;
 
-            // Методы
-            public List<RebarHostCache> GetNearestHostCaches(List<RebarHostCache> hostCacheCandidates, Side side, double deep)
-            {
-                // Инициализация
-                List<RebarHostCache> nearestHostCaches = new List<RebarHostCache>();
-                if (Geom.Solid == null) Geom.GetSolidData();
-                List<PlanarFace> faces = new List<PlanarFace>();
-                switch (side)
+                foreach (RebarHostCache attachedCache in attachedCaches)
                 {
-                    case Side.Top: faces = Geom.Faces.Top; break;
-                    case Side.Bottom: faces = Geom.Faces.Bottom; break;
-                    default: return nearestHostCaches;
-                }
-
-                // Поиск прилегающих (ближайших) хостов
-                foreach (PlanarFace face in faces)
-                {
-                    Solid catchSolid = GeometryCreationUtilities.CreateExtrusionGeometry(face.GetEdgesAsCurveLoops(), face.FaceNormal, deep);
-                    ElementFilter filter = new ElementIntersectsSolidFilter(catchSolid);
-                    nearestHostCaches.AddRange(from hostCache in hostCacheCandidates
-                                               where filter.PassesFilter(hostCache.Elem)
-                                               select hostCache);
-                }
-                return nearestHostCaches;
-            }
-            public WallSubCaches SplitByAnotherHost(RebarHostCache anotherHostCache)
-            {
-                // Инициализация
-                WallSubCaches data = new WallSubCaches
-                {
-                    Ends = new List<EndCache>(),
-                    Intersections = new List<IntersectionCache>(),
-                    Regions = new List<RegionCache>(),
-                };
-                List<XYZ> splitPoints = new List<XYZ>();
-                Plane planeRegionBot = Plane.CreateByOriginAndBasis(Geom.Origins.CenterMiddleBottom, Geom.Dirs.X, Geom.Dirs.Y);
-
-                switch (anotherHostCache.GetType().Name)
-                {
-                    case "WallCache":
-                        // Деление региона на регионы окончаниями и пересечениями другой стены
-                        WallCache anotherWallCache = anotherHostCache as WallCache;
-                        splitPoints = new List<XYZ>();
-                        splitPoints.AddRange(anotherWallCache.GetWallRegionsPointsFromEnds());
-                        splitPoints.AddRange(anotherWallCache.GetWallRegionsPointsFromIntersections());
-                        splitPoints = GeometryTools.GetFilteredPointsInSightOfHostCache(splitPoints, Geom);
-                        if (splitPoints.Count > 0)
-                        {
-                            splitPoints = (from point in splitPoints
-                                           select GeometryTools.ProjectPointOntoPlane(planeRegionBot, point)).ToList();
-                            List<XYZ> newWallRegionsPoints = new List<XYZ> { Geom.Origins.CenterStartBottom, Geom.Origins.CenterEndBottom };
-                            newWallRegionsPoints.AddRange(splitPoints);
-                            newWallRegionsPoints = newWallRegionsPoints.OrderBy(point => point, new Sorting.XYZCoordsComparer()).ToList();
-                            for (int i = 0; i < newWallRegionsPoints.Count - 1; i += 2)
-                            {
-                                RegionCache regionCache = new RegionCache(Geom as GeometryWallCache, newWallRegionsPoints[i], newWallRegionsPoints[i + 1]);
-                                data.Regions.Add(regionCache);
-                            }
-
-                            // Деление регионов на регионы отвестиями и проёмами, прилегающими к нижней части
-                            List<XYZ> wallRegionsPointsFromVoids = anotherWallCache.GetWallRegionsPointsFromVoids().OrderBy(point => point, new Sorting.XYZCoordsComparer()).ToList();
-                            for (int i = 0; i < data.Regions.Count; i++)
-                            {
-                                RegionCache regionCache = data.Regions[i];
-                                splitPoints = GeometryTools.GetFilteredPointsInSightOfHostCache(wallRegionsPointsFromVoids, regionCache.Geom);
-                                if (splitPoints.Count > 0)
-                                {
-                                    List<RegionCache> splittedRegionCaches = regionCache.SplitByPoints(splitPoints);
-                                    if (splittedRegionCaches != null)
-                                    {
-                                        data.Regions.RemoveAt(i);
-                                        data.Regions.InsertRange(i, splittedRegionCaches);
-                                    }
-                                }
-                            }
-                        }
-
-                        // Добавление окончаний с другой стены
-                        foreach (EndCache anotherEndCache in anotherWallCache.Ends)
-                        {
-                            planeRegionBot.Project(anotherEndCache.Geom.Origins.CenterStartBottom, out UV uv, out _);
-                            if (uv.U > -Geom.Dims.L / 2 & uv.U < Geom.Dims.L / 2)
-                            {
-                                XYZ origin = GeometryTools.ProjectPointOntoPlane(planeRegionBot, anotherEndCache.Geom.Origins.CenterStartBottom);
-                                EndCache endCache = new EndCache(geomWallCache, origin, anotherEndCache.Geom.Dirs.X);
-                                data.Ends.Add(endCache);
-                            }
-                        }
-
-                        // Добавление пересечений с другой стены
-                        foreach (IntersectionCache anotherIntersectionCache in anotherWallCache.Intersections)
-                        {
-                            planeRegionBot.Project(anotherIntersectionCache.Geom.Origins.CenterMiddleBottom, out UV uv, out _);
-                            if (uv.U > -Geom.Dims.L / 2 & uv.U < Geom.Dims.L / 2)
-                            {
-                                XYZ origin = GeometryTools.ProjectPointOntoPlane(planeRegionBot, anotherIntersectionCache.Geom.Origins.CenterMiddleBottom);
-                                IntersectionCache intersectionCache = new IntersectionCache(geomWallCache, null, origin);
-                                intersectionCache.Geom.Dims = anotherIntersectionCache.Geom.Dims;
-                                intersectionCache.Geom.Dirs = anotherIntersectionCache.Geom.Dirs;
-                                data.Intersections.Add(intersectionCache);
-                            }
-                        }
-                        return data;
-
-                    case "ColumnCache":
-                        ColumnCache anotherColumnCache = anotherHostCache as ColumnCache;
-                        splitPoints = new List<XYZ>
-                        {
-                            anotherColumnCache.Geom.Origins.CenterStartBottom,
-                            anotherColumnCache.Geom.Origins.CenterEndBottom
-                        };
-                        splitPoints = GeometryTools.GetFilteredPointsInSightOfHostCache(splitPoints, Geom);
-                        if (splitPoints.Count > 0)
-                        {
-                            splitPoints = (from point in splitPoints
-                                           select GeometryTools.ProjectPointOntoPlane(planeRegionBot, point)).ToList();
-                            data.Regions = SplitByPoints(splitPoints);
-                        }
-                        return data;
-
-                    default: return data;
+                    plane.Project(attachedCache.Geom.Origins.CenterMiddleBottom, out UV uv, out _);
+                    XYZ origin = new(plane.Origin.X + uv.U, plane.Origin.Y + uv.V, this.Geom.Dims.ZBot);
+                    if (!intersectionOriginsData.ContainsKey(origin)) intersectionOriginsData.Add(origin, face.FaceNormal);
                 }
             }
-            public List<RegionCache> SplitByPoints(List<XYZ> splitPoints)
+
+            foreach (PlanarFace face in this.Geom.Faces.SideShort)
             {
-                List<RegionCache> regionCaches = new List<RegionCache>();
-                splitPoints.Add(Geom.Origins.CenterStartBottom);
-                splitPoints.Add(Geom.Origins.CenterEndBottom);
-                splitPoints = splitPoints.OrderBy(point => point, new Sorting.XYZCoordsComparer()).ToList();
-
-                for (int j = 0; j < splitPoints.Count - 1; j++)
-                    regionCaches.Add(new RegionCache(Geom as GeometryWallCache, splitPoints[j], splitPoints[j + 1]));
-
-                if (regionCaches.Count > 1) return regionCaches;
-                else return null;
-            }
-
-            private void ComputeVRebarQuantitiesAndAlign()
-            {
-                double L0 = Geom.Dims.L - Reinf.DataY.Step;
-                int N = (int)Math.Round(L0 / Reinf.DataY.Step) + 1;
-                
-                VRebarQuantities = N % 2 == 0 
-                    ? [N / 2, N / 2, N / 2, N / 2] 
-                    : [(N + 1) / 2, N - (N + 1) / 2, (N + 1) / 2, N - (N + 1) / 2];
-
-                VRebarAlign = (Geom.Dims.L - Reinf.DataY.Step * (N - 1)) / 2;
-            }
-
-            // Свойства
-            public List<int> VRebarQuantities { get; private set; }
-            public double VRebarAlign { get; private set; }
-        }
-        public class IntersectionCache : RebarHostCache
-        {
-            private readonly GeometryWallCache _geomWallCache;
-
-            // Конструкторы
-            public IntersectionCache(GeometryWallCache geomWallCache, List<GeometryCache> attachedGeometryCaches, XYZ origin)
-            {
-                _geomWallCache = geomWallCache;
-                doc = geomWallCache.Elem.Document;
-                Geom = new GeometryWallCache.IntersectionCache(geomWallCache, attachedGeometryCaches, origin);
-                Reinf = new ReinforcementWallCache.IntersectionCache(geomWallCache.Elem as Wall);
-            }
-
-            public bool AllowCreateRebars()
-            {
-                if (_geomWallCache.Solid == null) _geomWallCache.GetSolidData();
-                for (double k = 0; k < 1.5; k = k+0.5)
+                List<RebarHostCache> attachedCaches = [.. face.GetAttachedElements(collector, 10 / 304.8).Select(elem => elem.GetRebarHostCache())];
+                allAttachedCaches.AddRange(attachedCaches);
+                foreach (RebarHostCache attachedCache in attachedCaches)
                 {
-                    Line cutLine = Line.CreateBound(Geom.Origins.CenterMiddleBottom, Geom.Origins.CenterMiddleBottom + XYZ.BasisZ * (10 / 304.8 + Geom.Dims.H * k));
-                    if (Geom.Solid.IntersectWithCurve(cutLine, null).Any()) return true;
+                    XYZ origin = face.Project(attachedCache.Geom.Origins.CenterMiddleBottom).XYZPoint;
+                    if (!intersectionOriginsData.ContainsKey(origin)) intersectionOriginsData.Add(origin, face.FaceNormal);
                 }
-                return false;
             }
-        }
-        public class EndCache : RebarHostCache
-        {
-            // Конструкторы
-            public EndCache(GeometryWallCache geomWallCache, XYZ origin, XYZ xDir)
+
+            // Сбор данных по пересечниям
+            foreach (XYZ origin in intersectionOriginsData.Keys)
             {
-                doc = geomWallCache.Elem.Document;
-                Geom = new GeometryWallCache.EndCache(geomWallCache, origin, xDir);
-                Reinf = new ReinforcementWallCache.EndCache(geomWallCache.Elem as Wall);
+                List<XYZ> points =
+                [
+                    origin - intersectionOriginsData[origin].VecABS() * 10 / 304.8,
+                    origin + intersectionOriginsData[origin].VecABS() * 10 / 304.8 + this.Geom.Dirs.Z * this.Geom.Dims.H
+                ];
+                Outline outline = new(points.First(), points.Last());
+                filter = new BoundingBoxIntersectsFilter(outline);
+                List<RebarHostCache> attachedRebarHostCaches = [.. allAttachedCaches.Where(c => filter.PassesFilter(c.Elem))];
+
+                intersectionCaches.Add(new WallIntersectionCache(this, attachedRebarHostCaches, origin));
             }
+            return intersectionCaches;
         }
 
         // Свойства
         public Wall Wall { get; set; }
         public List<CompoundStructureLayer> Layers { get; set; }
-        public List<RegionCache> Regions { get; set; }
-        public List<IntersectionCache> Intersections { get; set; }
-        public List<EndCache> Ends { get; set; }
+        public List<WallRegionCache> Regions { get; set; }
+        public List<WallIntersectionCache> Intersections { get; set; }
+        public List<WallEndCache> Ends { get; set; }
         public List<VoidCache> Voids { get; set; }
+        public double CatchDeep { get; private set; }
     }
 }

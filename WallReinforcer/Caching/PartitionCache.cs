@@ -20,8 +20,8 @@ namespace RevitOSA.WallReinforcer.Caching
 
 #if REVIT2024 || REVIT2025
             Voids = (from id in (elem as Wall).FindInserts(false, false, false, false)
-                     where doc.GetElement(id).Category.BuiltInCategory == BuiltInCategory.OST_Windows || doc.GetElement(id).Category.BuiltInCategory == BuiltInCategory.OST_Doors
-                     select doc.GetElement(id)).ToList();
+                     where _doc.GetElement(id).Category.BuiltInCategory == BuiltInCategory.OST_Windows || _doc.GetElement(id).Category.BuiltInCategory == BuiltInCategory.OST_Doors
+                     select _doc.GetElement(id)).ToList();
 #else
             Voids = (from id in (elem as Wall).FindInserts(false, false, false, false)
                      where (BuiltInCategory)doc.GetElement(id).Category.Id.IntegerValue == BuiltInCategory.OST_Windows ||
@@ -55,7 +55,7 @@ namespace RevitOSA.WallReinforcer.Caching
                                                    select new BoundingBoxContainsPointFilter(point) as ElementFilter).ToList();
                     filters.Add(new ElementIntersectsSolidFilter(Geom.Solid));
                     ElementFilter filter = new LogicalOrFilter(filters);
-                    AttachedConcretes = new ExtractingTools.ConcreteExtractor(doc, filter).ToElements().ToList();
+                    AttachedConcretes = new ExtractingTools.ConcreteExtractor(_doc, filter).ToElements().ToList();
                 }
             }
         }

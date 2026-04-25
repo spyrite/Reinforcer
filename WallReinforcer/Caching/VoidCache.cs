@@ -196,7 +196,7 @@ namespace RevitOSA.WallReinforcer.Caching
             XYZ p0 = Geom.Origins.CenterMiddleBottom + Geom.Dirs.Z * 10 / 304.8 - Geom.Dirs.X * (Geom.Dims.B / 2 + 10 / 304.8);
             XYZ p1 = Geom.Origins.CenterMiddleBottom + Geom.Dirs.Z * 10 / 304.8 + Geom.Dirs.X * (Geom.Dims.B / 2 * 10 / 304.8);
             Line cutLine = Line.CreateBound(p0, p1);
-            foreach (WallCache.RegionCache regionCache in (HostCache as WallCache).Regions)
+            foreach (WallRegionCache regionCache in (HostCache as WallCache).Regions)
             {
                 if (regionCache.Geom.Solid == null) regionCache.Geom.GetSolidData();
                 List<Curve> spotLines = regionCache.Geom.Solid.IntersectWithCurve(cutLine, null).ToList();
