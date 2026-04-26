@@ -1,44 +1,64 @@
-Nothing should be ignored based on the provided file changes. The only modified file is a source code file (`WallReinforcer/Caching/WallCache.cs`), which should not be added to .gitignore.
 ```
-# Compiled and build artifacts
-*.obj
-*.exe
+# Build artifacts
 *.dll
+*.exe
+*.pdb
 *.so
+*.dylib
+*.o
+*.obj
 *.a
+*.lib
 *.out
-obj/
-bin/
+
 # Dependencies
-packages/
-# Logs and temp files
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.egg-info/
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
 *.log
 *.tmp
-# Revit/autodesk specific
-*.bak
-*.~*
-# Original rules preserved
-*.log
 *.swp
-
-# Editors
-.vs/
-.idea/
-
-# OS generated files
+*.swo
 .DS_Store
 Thumbs.db
 
-# Rider / ReSharper
-.vs/
+# IDE specific
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
 *.suo
-*.wsuo
-*.slnx
-*.dtbcache*
-*.slnx.sqlite
+*.user
+*.userosscache
+*.sln.docstates
 
-# Build artifacts
-obj/
-bin/
-*.cache
+# Distribution / packaging
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Testing
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+
+# System
+.DS_Store
+Thumbs.db
 ```
