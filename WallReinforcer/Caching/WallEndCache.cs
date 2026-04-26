@@ -17,8 +17,8 @@ namespace RevitOSA.WallReinforcer.Caching
         {
             _doc = wCache.Elem.Document;
             _parentWallCache = wCache;
-            Geom = new GeometryWallCache.EndCache(wCache.Geom as GeometryWallCache, origin, xDir);
-            Reinf = new ReinforcementWallCache.EndCache(wCache.Elem as Wall);
+            Geom = new GeometryWallEndCache(wCache.Geom as GeometryWallCache, origin, xDir);
+            Reinf = new ReinforcementWallEndCache(wCache.Elem as Wall);
         }
     }
 }

@@ -17,8 +17,8 @@ namespace RevitOSA.WallReinforcer.Caching
         {
             _parentWallCache = wCache;
             _doc = wCache.Elem.Document;
-            Geom = new GeometryWallCache.IntersectionCache(wCache.Geom as GeometryWallCache, [.. attachedRebarHostCaches.Select(c => c.Geom)], origin);
-            Reinf = new ReinforcementWallCache.IntersectionCache(wCache.Elem as Wall);
+            Geom = new GeometryWallIntersectionCache(wCache.Geom as GeometryWallCache, [.. attachedRebarHostCaches.Select(c => c.Geom)], origin);
+            Reinf = new ReinforcementWallIntersectionCache(wCache.Elem as Wall);
 
             AttachedRebarHostCaches = attachedRebarHostCaches;
 

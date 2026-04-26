@@ -19,8 +19,8 @@ namespace RevitOSA.WallReinforcer.Caching
         public WallRegionCache(WallCache wCache, XYZ startPoint, XYZ endPoint)
         {
             _parentWallCache = wCache;
-            Geom = new GeometryWallCache.RegionCache(wCache.Geom as GeometryWallCache, startPoint, endPoint);
-            Reinf = new ReinforcementWallCache.RegionCache(wCache.Elem as Wall);
+            Geom = new GeometryWallRegionCache(wCache.Geom as GeometryWallCache, startPoint, endPoint);
+            Reinf = new ReinforcementWallRegionCache(wCache.Elem as Wall);
 
             ComputeVRebarQuantitiesAndAlign();
         }
