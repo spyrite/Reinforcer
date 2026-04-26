@@ -331,7 +331,7 @@ namespace RevitOSA.WallReinforcer.Tools
         /// <summary>
         /// Создаёт соответствующий кэш для элемента на основе его типа
         /// </summary>
-        public static RebarHostCache GetRebarHostCache(this Element elem)
+        public static RebarHostCache GetHostCache(this Element elem)
         {
             return elem switch
             {
@@ -414,7 +414,7 @@ namespace RevitOSA.WallReinforcer.Tools
             FilteredElementCollector collector = new FilteredElementCollector(doc).WherePasses(filter);
             
             return faces.SelectMany(face => GetAttachedElements(face, collector, dst))
-                        .Select(GetRebarHostCache)
+                        .Select(GetHostCache)
                         .ToList();
         }
         
@@ -471,7 +471,7 @@ namespace RevitOSA.WallReinforcer.Tools
             Document doc = geomCache.Elem.Document;
             
             if (!TryCreateTransforms(geomCache, side, out Transform transform0, out List<XYZ> points))
-                return new List<T>();
+                return [];
             
             Transform transform1 = Transform.CreateTranslation(-geomCache.Dirs.Z * 10 / 304.8);
             Transform transform2 = Transform.CreateTranslation(geomCache.Dirs.Z * 10 / 304.8);

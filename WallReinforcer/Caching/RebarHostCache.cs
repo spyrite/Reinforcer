@@ -76,12 +76,6 @@ namespace RevitOSA.WallReinforcer.Caching
         public List<ColumnCache> UpperColumnCaches { get; set; }
 
         //Методы
-        public List<Element> GetAttachedRebarHosts(double catchDeep)
-        {
-            return ExtractingTools.GetAttachedRebarHosts(this, catchDeep);
-        }
-
-
 
         #region Перегородки
         public void GetPartitionIds(List<Document> docs)
@@ -235,7 +229,7 @@ namespace RevitOSA.WallReinforcer.Caching
                 }
                 else
                 {
-                    upperWallCache1.AnalyzeForUpperElems();
+                    upperWallCache1.AnalyzeForUpperCaches(500/304.8);
                     topAnc += upperWallCache1.Geom.Dims.H + (upperWallCache1.UpperSlabCaches.Any() ? upperWallCache1.UpperSlabCaches.Max(c => c.Geom.Dims.T) : 0);
                     if (upperWallCache1.UpperWallCaches.Any())
                     {
@@ -252,7 +246,6 @@ namespace RevitOSA.WallReinforcer.Caching
 
         public double GetTopAnc(double d, string RClass, double rebarCoverEdge)
         {
-            AnalyzeForUpperElems();
             double topAnc = (UpperSlabCaches.Any()
                             ? UpperSlabCaches.Max(c => c.Geom.Dims.T)
                             : 0)

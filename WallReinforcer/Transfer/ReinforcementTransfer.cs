@@ -35,7 +35,7 @@ namespace RevitOSA.WallReinforcer.Transfer
         public static void CopyFromHostToHosts(Element elem, List<Element> targetHosts)
         {
             // Инициализация
-            sourceRHC = elem.GetRebarHostCache();
+            sourceRHC = elem.GetHostCache();
             doc = sourceRHC.Elem.Document;
             sourceRebarHostMembers = GetRebarHostMembers(sourceRHC.Elem);
             GetSourceWorksets();
@@ -45,7 +45,7 @@ namespace RevitOSA.WallReinforcer.Transfer
 
             foreach (Element targetHost in targetHosts)
             {
-                targetRHC = targetHost.GetRebarHostCache();
+                targetRHC = targetHost.GetHostCache();
 
                 // Сопоставление защитных слоёв исходного хоста и целевого хоста
                 if (sourceRHC.Elem.GetType() == targetHost.GetType()) RebarCoverAssistant.SetRebarCoversToHost(targetHost, sourceCoverIds);

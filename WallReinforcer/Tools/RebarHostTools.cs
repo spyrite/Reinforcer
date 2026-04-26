@@ -158,7 +158,7 @@ namespace RevitOSA.WallReinforcer.Tools
                 else { i++; continue; }
 
                 if (rhc.Geom.Solid == null) rhc.Geom.GetSolidData();
-                catchedElems = (from host in rhc.GetAttachedRebarHosts()
+                catchedElems = (from host in ExtractingTools.GetAttachedRebarHosts(rhc, 10/304.8)
                                 where host.get_Parameter(BuiltInParameter.ALL_MODEL_MARK).HasValue
                                 && host.get_Parameter(BuiltInParameter.ALL_MODEL_MARK).AsString() == rhc.HostMark
                                 select host).ToList();

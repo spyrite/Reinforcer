@@ -197,7 +197,7 @@ namespace RevitOSA.WallReinforcer.Revit
             foreach (WallRegionCache region in wCache.Regions)
             {
                 //Поиск соседнего элемента
-                RebarHostCache attachmentCache = region.GetAttachedRebarHosts().FirstOrDefault()?.GetRebarHostCache();
+                RebarHostCache attachmentCache = null;
                 if (attachmentCache == null) continue;
 
                 //Перепуск снизу
