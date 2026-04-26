@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Parameter = Autodesk.Revit.DB.Parameter;
 using ReinfSettings = RevitOSA.WallReinforcer.Properties.Reinforcement;
@@ -69,28 +70,42 @@ namespace RevitOSA.WallReinforcer.Caching
         /// <param name="catchDeep">Глубина захвата соседних элементов</param>
         public void AnalyzeForSubCaches(double catchDeep)
         {
+            Debug.WriteLine($"[WallCache] Начало анализа подкэшей для стены {Element.Id}");
+
             if (catchDeep <= 0)
+            {
+                Debug.WriteLine($"[WallCache] Ошибка: некорректное значение catchDeep={catchDeep}");
                 throw new ArgumentOutOfRangeException(nameof(catchDeep), catchDeep, "Глубина захвата должна быть положительным числом");
+            }
 
             if (_isAnalyzedForSubCaches)
+            {
+                Debug.WriteLine($"[WallCache] Пропуск: стена уже проанализирована");
                 return;
+            }
 
             CatchDeep = catchDeep;
+            Debug.WriteLine($"[WallCache] Глубина захвата установлена: {catchDeep}");
 
             // Инициализация геометрии
             EnsureGeometryInitialized();
+            Debug.WriteLine($"[WallCache] Геометрия инициализирована");
 
             // Извлечение соседних элементов
             var neighborElements = ExtractNeighborElements(catchDeep);
+            Debug.WriteLine($"[WallCache] Найдено вышележащих элементов: {neighborElements.UpperHostCaches.Count}, нижележащих: {neighborElements.LowerHostCaches.Count}");
 
             // Инициализация базовых подкэшей
             InitializeBaseSubCaches();
+            Debug.WriteLine($"[WallCache] Базовые подкэши инициализированы: регионов={Regions?.Count ?? 0}, пересечений={Intersections?.Count ?? 0}, окончаний={Ends?.Count ?? 0}");
 
             // Разбиение регионов соседними элементами
             SplitRegionsByNeighbors(neighborElements.UpperHostCaches, Side.Top);
             SplitRegionsByNeighbors(neighborElements.LowerHostCaches, Side.Bottom);
+            Debug.WriteLine($"[WallCache] После разбиения: регионов={Regions?.Count ?? 0}, пересечений={Intersections?.Count ?? 0}, окончаний={Ends?.Count ?? 0}");
 
             _isAnalyzedForSubCaches = true;
+            Debug.WriteLine($"[WallCache] Анализ подкэшей завершён успешно");
         }
 
         /// <summary>
@@ -115,16 +130,21 @@ namespace RevitOSA.WallReinforcer.Caching
         /// </summary>
         private NeighborElements ExtractNeighborElements(double catchDeep)
         {
+            Debug.WriteLine($"[WallCache] Извлечение соседних элементов (глубина={catchDeep})");
+
             var allUpperHostCaches = ExtractingTools.GetNearestHostCaches(
                 Geom, Geom.Faces.Top, Side.Top, catchDeep);
+            Debug.WriteLine($"[WallCache] Найдено вышележащих элементов: {allUpperHostCaches.Count}");
 
             // Кэширование вышележащих элементов по типам
             UpperSlabCaches = [.. allUpperHostCaches.OfType<SlabCache>()];
             UpperWallCaches = [.. allUpperHostCaches.OfType<WallCache>()];
             UpperColumnCaches = [.. allUpperHostCaches.OfType<ColumnCache>()];
+            Debug.WriteLine($"[WallCache] Распределение по типам: плиты={UpperSlabCaches.Count}, стены={UpperWallCaches.Count}, колонны={UpperColumnCaches.Count}");
 
             var allLowerHostCaches = ExtractingTools.GetNearestHostCaches(
                 Geom, Geom.Faces.Bottom, Side.Bottom, catchDeep);
+            Debug.WriteLine($"[WallCache] Найдено нижележащих элементов: {allLowerHostCaches.Count}");
 
             return new NeighborElements(allUpperHostCaches, allLowerHostCaches);
         }
@@ -134,9 +154,16 @@ namespace RevitOSA.WallReinforcer.Caching
         /// </summary>
         private void InitializeBaseSubCaches()
         {
+            Debug.WriteLine($"[WallCache] Инициализация базовых подкэшей");
+
             Intersections = GetWallIntersectionCaches();
+            Debug.WriteLine($"[WallCache] Найдено пересечений: {Intersections.Count}");
+
             Ends = ExtractingTools.GetWallEndCaches(Geom as GeometryWallCache);
+            Debug.WriteLine($"[WallCache] Найдено окончаний: {Ends.Count}");
+
             Regions = GetWallRegionCaches();
+            Debug.WriteLine($"[WallCache] Создано регионов: {Regions.Count}");
         }
 
         /// <summary>
@@ -146,12 +173,21 @@ namespace RevitOSA.WallReinforcer.Caching
         /// <param name="side">Сторона (Top или Bottom)</param>
         private void SplitRegionsByNeighbors(List<RebarHostCache> neighborHostCaches, Side side)
         {
+            Debug.WriteLine($"[WallCache] Разбиение регионов для стороны {side}");
+
             if (Regions == null || Regions.Count == 0)
+            {
+                Debug.WriteLine($"[WallCache] Пропуск: нет регионов для разбиения");
                 return;
+            }
 
             if (neighborHostCaches == null || neighborHostCaches.Count == 0)
+            {
+                Debug.WriteLine($"[WallCache] Пропуск: нет соседних элементов для разбиения");
                 return;
+            }
 
+            int initialRegionsCount = Regions.Count;
             var newRegions = new List<WallRegionCache>();
             var newEnds = new List<WallEndCache>();
             var newIntersections = new List<WallIntersectionCache>();
@@ -160,6 +196,7 @@ namespace RevitOSA.WallReinforcer.Caching
             {
                 var regionNeighborCaches = regionCache.GetNearestHostCaches(
                     neighborHostCaches, side, CatchDeep);
+                Debug.WriteLine($"[WallCache] Регион {regionCache.Elem.Id}: найдено {regionNeighborCaches.Count} соседних элементов");
 
                 foreach (var neighborCache in regionNeighborCaches)
                 {
@@ -167,6 +204,7 @@ namespace RevitOSA.WallReinforcer.Caching
 
                     if (subCaches?.Regions != null && subCaches.Regions.Count > 0)
                     {
+                        Debug.WriteLine($"[WallCache] Регион разбит на {subCaches.Regions.Count} подрегионов");
                         newRegions.AddRange(subCaches.Regions);
                         newEnds.AddRange(subCaches.Ends ?? []);
                         newIntersections.AddRange(subCaches.Intersections ?? []);
@@ -180,6 +218,11 @@ namespace RevitOSA.WallReinforcer.Caching
                 Regions = newRegions;
                 Ends.AddRange(newEnds);
                 Intersections.AddRange(newIntersections);
+                Debug.WriteLine($"[WallCache] Разбиение завершено: было {initialRegionsCount} регионов, стало {Regions.Count} (+{newEnds.Count} окончаний, +{newIntersections.Count} пересечений)");
+            }
+            else
+            {
+                Debug.WriteLine($"[WallCache] Разбиение не потребовалось: количество регионов не изменилось");
             }
         }
         public void GetVoidCaches()
