@@ -256,8 +256,8 @@ namespace RevitOSA.WallReinforcer.Revit
 
                     foreach (CurveLoop arBound in arBounds)
                     {
-                        AreaReinforcement ar = AreaReinforcement.Create(Doc, wCache.Elem, arBound, region.Geom.Dirs.X, 
-                            _arType.Id, region.Reinf.DRebarTypeDY1.Id, ElementId.InvalidElementId)
+                        AreaReinforcement ar = AreaReinforcement.Create(Doc, wCache.Elem, [.. arBound], region.Geom.Dirs.X,
+                            _arType.Id, region.Reinf.DataY.BarType.Id, ElementId.InvalidElementId);
                     }
 
                     //Создание арматурного стержня, настройка зависимостей, определение параметров
