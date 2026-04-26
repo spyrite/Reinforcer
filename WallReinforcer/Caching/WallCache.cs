@@ -120,10 +120,17 @@ namespace RevitOSA.WallReinforcer.Caching
         /// <summary>
         /// Данные о соседних элементах стены
         /// </summary>
-        private record NeighborElements(
-            List<RebarHostCache> UpperHostCaches,
-            List<RebarHostCache> LowerHostCaches
-        );
+        private class NeighborElements
+        {
+            public List<RebarHostCache> UpperHostCaches { get; }
+            public List<RebarHostCache> LowerHostCaches { get; }
+
+            public NeighborElements(List<RebarHostCache> upperHostCaches, List<RebarHostCache> lowerHostCaches)
+            {
+                UpperHostCaches = upperHostCaches;
+                LowerHostCaches = lowerHostCaches;
+            }
+        }
 
         /// <summary>
         /// Извлекает вышележащие и нижележащие элементы
