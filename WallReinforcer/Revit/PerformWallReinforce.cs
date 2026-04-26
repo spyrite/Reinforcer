@@ -251,6 +251,14 @@ namespace RevitOSA.WallReinforcer.Revit
                     SolidTools.CutExtendSolidWithBoundOpenings(arSolid, wCache.Voids);
                     SolidTools.CutExtendSolidWithUpperOpenings(arSolid, upperVoidCaches, wCache.Geom.Dims.ZBot, topOv, ReinfSettings.Default.reinf_RebarCover_Edge / 304.8);
 
+                    List<CurveLoop> arBounds = [.. arSolid.Faces.OfType<PlanarFace>()
+                        .Where(f => f.FaceNormal.IsAlmostEqualTo(region.Geom.Dirs.Y)).Select(f => f.GetEdgesAsCurveLoops()).First()];
+
+                    foreach (CurveLoop arBound in arBounds)
+                    {
+                        AreaReinforcement ar = AreaReinforcement.Create(Doc, wCache.Elem, arBound, region.Geom.Dirs.X, 
+                            _arType.Id, region.Reinf.DRebarTypeDY1.Id, ElementId.InvalidElementId)
+                    }
 
                     //Создание арматурного стержня, настройка зависимостей, определение параметров
 
