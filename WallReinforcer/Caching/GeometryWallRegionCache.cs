@@ -12,14 +12,17 @@ namespace RevitOSA.WallReinforcer.Caching
         GeometryWallCache geomWallCache;
 
         // Конструкторы
-        public GeometryWallRegionCache(GeometryWallCache geomWallCache, XYZ startPoint, XYZ endPoint)
+        public GeometryWallRegionCache(GeometryWallCache geomWallCache, XYZ startPoint, XYZ endPoint) : base(geomWallCache.Elem)
         {
             this.geomWallCache = geomWallCache;
+            
+            // 1. Инициализация линий
             Lines = new ControlLines
             {
                 CenterBot = Line.CreateBound(startPoint, endPoint)
             };
 
+            // 2. Инициализация контрольных точек
             Origins = new ControlPoints
             {
                 CenterStartBottom = startPoint,
@@ -27,6 +30,7 @@ namespace RevitOSA.WallReinforcer.Caching
                 CenterEndBottom = endPoint
             };
 
+            // 3. Расчет размеров и координат
             Dims = new ControlDimensions
             {
                 L = Lines.CenterBot.Length,
@@ -35,12 +39,14 @@ namespace RevitOSA.WallReinforcer.Caching
                 ZBot = Origins.CenterMiddleBottom.Z
             };
 
+            // 4. Инициализация направлений
             Dirs = new Directions
             {
                 X = (Lines.CenterBot as Line).Direction.Normalize(),
                 Z = geomWallCache.Dirs.Z
             };
 
+            // 5. Проверка совпадения точек со стеной
             HasPointsCoincidentWithWall();
         }
 

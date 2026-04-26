@@ -9,8 +9,9 @@ namespace RevitOSA.WallReinforcer.Caching
     public class GeometryWallEndCache : GeometryCache
     {
         // Конструкторы
-        public GeometryWallEndCache(GeometryWallCache geometryWallCache, XYZ origin, XYZ xDir)
+        public GeometryWallEndCache(GeometryWallCache geometryWallCache, XYZ origin, XYZ xDir) : base(geometryWallCache.Elem)
         {
+            // 1. Инициализация направлений
             Dirs = new Directions
             {
                 X = xDir,
@@ -18,6 +19,7 @@ namespace RevitOSA.WallReinforcer.Caching
                 Z = geometryWallCache.Dirs.Y
             };
 
+            // 2. Расчет размеров и координат
             Dims = new ControlDimensions
             {
                 L = ReinfSettings.Default.reinf_Walls_Y_Edge_CenterAlign / 304.8
@@ -27,6 +29,7 @@ namespace RevitOSA.WallReinforcer.Caching
                 H = geometryWallCache.Dims.H,
             };
 
+            // 3. Инициализация контрольных точек
             Origins = new ControlPoints
             {
                 CenterStartBottom = origin,

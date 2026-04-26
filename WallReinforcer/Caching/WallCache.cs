@@ -12,7 +12,6 @@ using RevitOSA.WallReinforcer.Revit.Filters;
 using static RevitOSA.WallReinforcer.Assistants.Sorting;
 
 
-
 #if COMPANY_FP
 using static RevitOSA.WallReinforcer.Resources1P.RevitParameters;
 
@@ -70,7 +69,7 @@ namespace RevitOSA.WallReinforcer.Caching
         /// <param name="catchDeep">Глубина захвата соседних элементов</param>
         public void AnalyzeForSubCaches(double catchDeep)
         {
-            Debug.WriteLine($"[WallCache] Начало анализа подкэшей для стены {Element.Id}");
+            Debug.WriteLine($"[WallCache] Начало анализа подкэшей для стены {Wall.Id}");
 
             if (catchDeep <= 0)
             {
@@ -202,7 +201,7 @@ namespace RevitOSA.WallReinforcer.Caching
                 {
                     var subCaches = regionCache.SplitByAnotherHost(neighborCache);
 
-                    if (subCaches?.Regions != null && subCaches.Regions.Count > 0)
+                    if (subCaches.Regions != null && subCaches.Regions.Count > 0)
                     {
                         Debug.WriteLine($"[WallCache] Регион разбит на {subCaches.Regions.Count} подрегионов");
                         newRegions.AddRange(subCaches.Regions);

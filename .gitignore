@@ -6,13 +6,18 @@
 *.so
 *.a
 *.out
-
+obj/
+bin/
 # Dependencies
 packages/
-
 # Logs and temp files
 *.log
 *.tmp
+# Revit/autodesk specific
+*.bak
+*.~*
+# Original rules preserved
+*.log
 *.swp
 
 # Editors

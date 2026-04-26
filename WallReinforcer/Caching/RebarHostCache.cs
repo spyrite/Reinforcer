@@ -89,7 +89,7 @@ namespace RevitOSA.WallReinforcer.Caching
 #if REVIT2024 || REVIT2025
                 attHosts.AddRange(new FilteredElementCollector(_doc).OfClass(Elem.GetType()).OfCategory(Elem.Category.BuiltInCategory).WherePasses(filter).ToElements().ToList());
 #else
-                attHosts.AddRange(new FilteredElementCollector(doc).OfClass(Elem.GetType()).OfCategory((BuiltInCategory)Elem.Category.Id.IntegerValue).WherePasses(filter).ToElements().ToList());
+                attHosts.AddRange(new FilteredElementCollector(_doc).OfClass(Elem.GetType()).OfCategory((BuiltInCategory)Elem.Category.Id.IntegerValue).WherePasses(filter).ToElements().ToList());
 #endif
             }
 
