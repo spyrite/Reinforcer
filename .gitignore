@@ -6,20 +6,16 @@
 *.so
 *.a
 *.out
-
+obj/
+bin/
 # Dependencies
 packages/
-
 # Logs and temp files
 *.log
 *.tmp
-*.swp
-
-# Editors
-.vs/
-.idea/
-
-# OS generated files
-.DS_Store
-Thumbs.db
+# Revit/autodesk specific
+*.bak
+*.~*
+# Original rules preserved
+*.log
 ```

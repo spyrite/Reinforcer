@@ -21,65 +21,56 @@ namespace RevitOSA.WallReinforcer.Caching
         public GeometryFamilyInstanceCache(Element elem) : base(elem) { }
         public GeometryFamilyInstanceCache(FamilyInstance inst) : base(inst)
         {
-            preCalculations = new List<object>
-            {
-                inst.GetTransform().BasisX,
-                inst.GetTransform().BasisY,
-            };
-            if (inst.Location is LocationPoint) preCalculations.Add((inst.Location as LocationPoint).Point - BasePoint.Position);
+            // 1. Получаем явные параметры и геометрию
+            XYZ basisX = inst.GetTransform().BasisX;
+            XYZ basisY = inst.GetTransform().BasisY;
+            XYZ origin = (inst.Location is LocationPoint) 
+                ? (inst.Location as LocationPoint).Point - BasePoint.Position
+                : inst.GetTransform().Origin - BasePoint.Position;
+            
+            double sillHeight = inst.get_Parameter(BuiltInParameter.INSTANCE_SILL_HEIGHT_PARAM) != null
+                ? inst.get_Parameter(BuiltInParameter.INSTANCE_SILL_HEIGHT_PARAM).AsDouble()
+                : 0;
 
-            else preCalculations.Add(inst.GetTransform().Origin - BasePoint.Position);
-            if (inst.get_Parameter(BuiltInParameter.INSTANCE_SILL_HEIGHT_PARAM) != null)
-                preCalculations.Add(inst.get_Parameter(BuiltInParameter.INSTANCE_SILL_HEIGHT_PARAM).AsDouble());
-            else preCalculations.Add(0);
-
-
+            // 2. Инициализация направлений
             Dirs = new Directions
             {
-                X = preCalculations[0] as XYZ,
-                Y = preCalculations[1] as XYZ,
-                Z = (preCalculations[0] as XYZ).CrossProduct(preCalculations[1] as XYZ)
+                X = basisX,
+                Y = basisY,
+                Z = basisX.CrossProduct(basisY)
             };
-            List<double> HB = new List<double>();
-            /*List<Parameter> parsHB = GetHBParameters(inst);
-            if (parsHB.First() != null && parsHB.Last() != null)
-            {
-                HB.Add(parsHB.First().AsDouble());
-                HB.Add(parsHB.Last().AsDouble());
-            }
-            else
-            {
-                BoundingBoxXYZ bbox = inst.get_BoundingBox(null);
-                HB.Add(bbox.Max.Z - bbox.Min.Z);
-                HB.Add(bbox.Max.Y - bbox.Min.Y);
-            }*/
 
+            // 3. Расчет размеров из bounding box
             BoundingBoxXYZ bbox = inst.get_BoundingBox(null);
-            HB.Add(bbox.Max.Z - bbox.Min.Z);
-            HB.Add(bbox.Max.Y - bbox.Min.Y);
-            HB.Add(bbox.Max.X - bbox.Min.X);
+            double height = bbox.Max.Z - bbox.Min.Z;
+            double width = bbox.Max.Y - bbox.Min.Y;
+            double length = bbox.Max.X - bbox.Min.X;
 
             Dims = new ControlDimensions
             {
-                H = HB[0],
-                B = HB[1],
-                L = HB[2],
-                ZBot = (preCalculations[2] as XYZ).Z,
-                ZTop = (preCalculations[2] as XYZ).Z + HB.First(),
-                OffsetBot = (double)preCalculations[3],
-                OffsetTop = (double)preCalculations[3] + HB.First()
+                H = height,
+                B = width,
+                L = length,
+                ZBot = origin.Z,
+                ZTop = origin.Z + height,
+                OffsetBot = sillHeight,
+                OffsetTop = sillHeight + height
             };
 
+            // 4. Инициализация контрольных точек
             Origins = new ControlPoints
             {
-                CenterStartBottom = (preCalculations[2] as XYZ) - Dirs.X * Dims.L / 2,
-                CenterMiddleBottom = preCalculations[2] as XYZ,
-                CenterEndBottom = (preCalculations[2] as XYZ) + Dirs.X * Dims.L / 2,
-                CenterMiddleMiddle = (preCalculations[2] as XYZ) + Dirs.Z * Dims.H / 2,
-                CenterStartTop = (preCalculations[2] as XYZ) - Dirs.X * Dims.L / 2 + Dirs.Z * Dims.H,
-                CenterMiddleTop = (preCalculations[2] as XYZ) + Dirs.Z * Dims.H,
-                CenterEndTop = (preCalculations[2] as XYZ) + Dirs.X * Dims.L / 2 + Dirs.Z * Dims.H,
+                CenterStartBottom = origin - Dirs.X * Dims.L / 2,
+                CenterMiddleBottom = origin,
+                CenterEndBottom = origin + Dirs.X * Dims.L / 2,
+                CenterMiddleMiddle = origin + Dirs.Z * Dims.H / 2,
+                CenterStartTop = origin - Dirs.X * Dims.L / 2 + Dirs.Z * Dims.H,
+                CenterMiddleTop = origin + Dirs.Z * Dims.H,
+                CenterEndTop = origin + Dirs.X * Dims.L / 2 + Dirs.Z * Dims.H,
             };
+
+            // 5. BoundingBox
+            Outline = new Outline(bbox.Min, bbox.Max);
         }
 
         // Методы

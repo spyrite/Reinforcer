@@ -10,48 +10,74 @@ namespace RevitOSA.WallReinforcer.Caching
     {
         public GeometryColumnCache(FamilyInstance column) : base(column as Element)
         {
+            // 1. Получаем параметры размеров и смещений
             List<Parameter> parsLTH = GetLTHParameters(column);
-            preCalculations = new List<object>
-            {
-                parsLTH[0].AsDouble(),
-                column.get_Parameter(BuiltInParameter.FAMILY_BASE_LEVEL_OFFSET_PARAM).AsDouble()
-            };
+            double length = parsLTH[0].AsDouble();
+            double width = parsLTH[1].AsDouble();
+            double height = parsLTH[2].AsDouble();
+            
+            double baseOffset = column.get_Parameter(BuiltInParameter.FAMILY_BASE_LEVEL_OFFSET_PARAM).AsDouble();
+            double topOffset = column.get_Parameter(BuiltInParameter.FAMILY_TOP_LEVEL_OFFSET_PARAM).AsDouble();
+
+            // 2. Инициализация уровней
             LvlIds = new LevelIds
             {
                 Bot = column.get_Parameter(BuiltInParameter.FAMILY_BASE_LEVEL_PARAM).AsElementId(),
                 Top = column.get_Parameter(BuiltInParameter.FAMILY_TOP_LEVEL_PARAM).AsElementId(),
                 Base = column.get_Parameter(BuiltInParameter.FAMILY_BASE_LEVEL_PARAM).AsElementId()
             };
+
+            // 3. Инициализация направлений
             Dirs = new Directions
             {
                 X = column.GetTransform().BasisX,
                 Y = column.GetTransform().BasisY,
                 Z = XYZ.BasisZ
             };
+
+            // 4. Расчет размеров и координат
+            Level baseLevel = doc.GetElement(LvlIds.Bot) as Level;
+            if (baseLevel == null)
+                throw new InvalidOperationException("Base level not found.");
+
+            double baseLevelElevation = baseLevel.Elevation;
+            double zBot = baseLevelElevation + baseOffset;
+            double zTop = zBot + height;
+
             Dims = new ControlDimensions
             {
-                L = parsLTH[0].AsDouble(),
-                T = parsLTH[1].AsDouble(),
-                H = parsLTH[2].AsDouble(),
-                OffsetBot = column.get_Parameter(BuiltInParameter.FAMILY_BASE_LEVEL_OFFSET_PARAM).AsDouble(),
-                OffsetTop = column.get_Parameter(BuiltInParameter.FAMILY_TOP_LEVEL_OFFSET_PARAM).AsDouble(),
-                ZBot = (doc.GetElement(LvlIds.Bot) as Level).Elevation + (double)preCalculations[1],
-                ZTop = (doc.GetElement(LvlIds.Bot) as Level).Elevation + (double)preCalculations[1] + (double)preCalculations[0]
+                L = length,
+                T = width,
+                H = height,
+                OffsetBot = baseOffset,
+                OffsetTop = topOffset,
+                ZBot = zBot,
+                ZTop = zTop
             };
-            Origins = new ControlPoints();
-            Origins.CenterMiddleBottom = (column.Location as LocationPoint).Point + Dirs.Z * (Dims.ZBot); //+ BasePoint.Position.Z);
-            Origins.CenterStartBottom = Origins.CenterMiddleBottom - Dirs.X * Dims.L / 2;
-            Origins.CenterEndBottom = Origins.CenterMiddleBottom + Dirs.X * Dims.L / 2;
-            Origins.CenterMiddleMiddle = Origins.CenterMiddleBottom + Dirs.Z * Dims.H / 2;
-            Origins.CenterMiddleTop = Origins.CenterMiddleBottom + Dirs.Z * Dims.H;
-            Origins.CenterStartTop = Origins.CenterMiddleTop - Dirs.X * Dims.L / 2;
-            Origins.CenterEndTop = Origins.CenterMiddleTop + Dirs.X * Dims.L / 2;
 
+            // 5. Инициализация контрольных точек
+            XYZ centerPoint = (column.Location as LocationPoint).Point + Dirs.Z * zBot;
+            
+            Origins = new ControlPoints
+            {
+                CenterMiddleBottom = centerPoint,
+                CenterStartBottom = centerPoint - Dirs.X * Dims.L / 2,
+                CenterEndBottom = centerPoint + Dirs.X * Dims.L / 2,
+                CenterMiddleMiddle = centerPoint + Dirs.Z * Dims.H / 2,
+                CenterMiddleTop = centerPoint + Dirs.Z * Dims.H,
+                CenterStartTop = centerPoint + Dirs.Z * Dims.H - Dirs.X * Dims.L / 2,
+                CenterEndTop = centerPoint + Dirs.Z * Dims.H + Dirs.X * Dims.L / 2
+            };
+
+            // 6. Инициализация линий
             Lines = new ControlLines
             {
                 CenterBot = Line.CreateBound(Origins.CenterStartBottom, Origins.CenterEndBottom),
                 CenterTop = Line.CreateBound(Origins.CenterStartTop, Origins.CenterEndTop)
             };
+
+            // 7. BoundingBox
+            Outline = new Outline(column.get_BoundingBox(null).Min, column.get_BoundingBox(null).Max);
         }
 
         public override void GetSolidData()

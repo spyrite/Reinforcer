@@ -10,50 +10,72 @@ namespace RevitOSA.WallReinforcer.Caching
     {
         public GeometryBeamCache(FamilyInstance beam) : base(beam as Element)
         {
+            // 1. Получаем параметры размеров
             List<Parameter> parsHB = GetLBHParameters(beam);
-            preCalculations = new List<object>
-            {
-                parsHB[1].AsDouble(),
-                parsHB[2].AsDouble(),
-                beam.GetTransform().BasisX,
-                beam.GetTransform().BasisY,
-                parsHB[0].AsDouble()
-            };
+            double width = parsHB[1].AsDouble();
+            double height = parsHB[2].AsDouble();
+            double lengthParam = parsHB[0].AsDouble();
 
+            // 2. Получаем направления из трансформации
+            XYZ basisX = beam.GetTransform().BasisX;
+            XYZ basisY = beam.GetTransform().BasisY;
+
+            // 3. Инициализация уровней
             LvlIds = new LevelIds
             {
                 Base = beam.get_Parameter(BuiltInParameter.INSTANCE_REFERENCE_LEVEL_PARAM).AsElementId()
             };
+
+            // 4. Инициализация направлений
             Dirs = new Directions
             {
-                X = preCalculations[2] as XYZ,
-                Y = preCalculations[3] as XYZ,
-                Z = (preCalculations[2] as XYZ).CrossProduct(preCalculations[3] as XYZ)
+                X = basisX,
+                Y = basisY,
+                Z = basisX.CrossProduct(basisY)
             };
+
+            // 5. Расчет размеров и координат
+            double length1 = beam.get_Parameter(BuiltInParameter.INSTANCE_LENGTH_PARAM).AsDouble();
+            double length2 = beam.get_Parameter(BuiltInParameter.STRUCTURAL_FRAME_CUT_LENGTH).AsDouble();
+            double offsetY = GetOffsetY(beam, width, height);
+            double offsetZ = GetOffsetZ(beam, width, height);
+
             Dims = new ControlDimensions
             {
-                L1 = beam.get_Parameter(BuiltInParameter.INSTANCE_LENGTH_PARAM).AsDouble(),
-                L2 = beam.get_Parameter(BuiltInParameter.STRUCTURAL_FRAME_CUT_LENGTH).AsDouble(),
-                L = (double)preCalculations[4],
-                B = (double)preCalculations[0],
-                H = (double)preCalculations[1],
-                OffsetY = GetOffsetY(beam),
-                OffsetZ = GetOffsetZ(beam)
+                L1 = length1,
+                L2 = length2,
+                L = lengthParam,
+                B = width,
+                H = height,
+                OffsetY = offsetY,
+                OffsetZ = offsetZ
             };
+
+            // 6. Инициализация контрольных точек
+            Curve locationCurve = (beam.Location as LocationCurve)?.Curve;
+            if (locationCurve == null)
+                throw new InvalidOperationException("Beam location is not a curve.");
+
+            XYZ shiftVector = Dirs.Y * Dims.OffsetY + Dirs.Z * Dims.OffsetZ;
+            
             Origins = new ControlPoints
             {
-                CenterStartBottom = (beam.Location as LocationCurve).Curve.GetEndPoint(0) + Dirs.Y * Dims.OffsetY + Dirs.Z * Dims.OffsetZ,
-                CenterMiddleBottom = (beam.Location as LocationCurve).Curve.Evaluate(0.5, true) + Dirs.Y * Dims.OffsetY + Dirs.Z * Dims.OffsetZ,
-                CenterEndBottom = (beam.Location as LocationCurve).Curve.GetEndPoint(1) + Dirs.Y * Dims.OffsetY + Dirs.Z * Dims.OffsetZ,
+                CenterStartBottom = locationCurve.GetEndPoint(0) + shiftVector,
+                CenterMiddleBottom = locationCurve.Evaluate(0.5, true) + shiftVector,
+                CenterEndBottom = locationCurve.GetEndPoint(1) + shiftVector,
             };
             Origins.CenterStartMiddle = Origins.CenterStartBottom + Dirs.Z * Dims.H / 2;
             Origins.CenterMiddleMiddle = Origins.CenterMiddleBottom + Dirs.Z * Dims.H / 2;
             Origins.CenterEndMiddle = Origins.CenterEndBottom + Dirs.Z * Dims.H / 2;
 
+            // 7. Инициализация линий
             Lines = new ControlLines
             {
                 CenterBot = Line.CreateBound(Origins.CenterStartBottom, Origins.CenterEndBottom)
             };
+
+            // 8. BoundingBox
+            Outline = new Outline(beam.get_BoundingBox(null).Min, beam.get_BoundingBox(null).Max);
         }
 
         public override void GetSolidData()
@@ -87,7 +109,7 @@ namespace RevitOSA.WallReinforcer.Caching
             return pars;
         }
 
-        private double GetOffsetY(FamilyInstance beam)
+        private double GetOffsetY(FamilyInstance beam, double width, double height)
         {
             if (Dirs.Z.IsAlmostEqualTo(XYZ.BasisZ) || Dirs.Z.IsAlmostEqualTo(-XYZ.BasisZ))
             {
@@ -95,14 +117,14 @@ namespace RevitOSA.WallReinforcer.Caching
                 double yOffset = beam.get_Parameter(BuiltInParameter.Y_OFFSET_VALUE).AsDouble();
                 switch (yAlign)
                 {
-                    case 0: yOffset += (double)preCalculations[0] / 2; break;
-                    case 3: yOffset -= (double)preCalculations[0] / 2; break;
+                    case 0: yOffset += width / 2; break;
+                    case 3: yOffset -= width / 2; break;
                 }
                 return yOffset;
             }
             else return 0;
         }
-        private double GetOffsetZ(FamilyInstance beam)
+        private double GetOffsetZ(FamilyInstance beam, double width, double height)
         {
             if (Dirs.Z.IsAlmostEqualTo(XYZ.BasisZ) || Dirs.Z.IsAlmostEqualTo(-XYZ.BasisZ))
             {
@@ -110,9 +132,9 @@ namespace RevitOSA.WallReinforcer.Caching
                 double zOffset = beam.get_Parameter(BuiltInParameter.Z_OFFSET_VALUE).AsDouble();
                 switch (zAlign)
                 {
-                    case 0: zOffset -= (double)preCalculations[1]; break;
+                    case 0: zOffset -= height; break;
                     case 3: break;
-                    default: zOffset -= (double)preCalculations[1] / 2; break;
+                    default: zOffset -= height / 2; break;
                 }
                 return zOffset;
             }
