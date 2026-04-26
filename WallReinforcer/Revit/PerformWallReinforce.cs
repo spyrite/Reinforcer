@@ -18,8 +18,10 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media.Animation;
+using System.Windows.Shapes;
 using DocSettings = RevitOSA.WallReinforcer.Properties.Docs;
 using Document = Autodesk.Revit.DB.Document;
+using Line = Autodesk.Revit.DB.Line;
 using ReinfSettings = RevitOSA.WallReinforcer.Properties.Reinforcement;
 
 namespace RevitOSA.WallReinforcer.Revit
@@ -36,6 +38,9 @@ namespace RevitOSA.WallReinforcer.Revit
 
         private int _worksetIntId = -1;
         private readonly List<List<int>> wallIntersectionReinfMatrix = [[-1, -1, 0], [-1, 1, 1], [1, 1, 0], [1, -1, 1]];
+        private readonly List<List<int>> wallRegionReinfMatrix = [[-1, 0, 0], [-1, 1, 1], [1, 0, 1], [1, 1, 0]];
+        private readonly List<int> tokens = [-1, -1, 1, 1];
+        private AreaReinforcementType _arType;
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -46,6 +51,7 @@ namespace RevitOSA.WallReinforcer.Revit
             Doc = commandData.Application.ActiveUIDocument.Document;
             _selectedElementIds = [.. UIDoc.Selection.GetElementIds()];
             _wCaches = [];
+            _arType = new FilteredElementCollector(Doc).OfClass(typeof(AreaReinforcementType)).First() as AreaReinforcementType;
 
             //Выбор стен, сбор данных
             _wCaches = [.. _selectedElementIds.Select(id => Doc.GetElement(id)).Where(elem => elem is Wall).Select(elem => new WallCache(elem))];
@@ -197,8 +203,8 @@ namespace RevitOSA.WallReinforcer.Revit
             foreach (WallRegionCache region in wCache.Regions)
             {
                 //Поиск соседнего элемента
-                RebarHostCache attachmentCache = null;
-                if (attachmentCache == null) continue;
+                /*RebarHostCache attachmentCache = null;
+                if (attachmentCache == null) continue;*/
 
                 //Перепуск снизу
                 double botOv = (Math.Floor(ReinforcementTools.ComputeAorOVLength(wCache.Reinf.DataY.D, wCache.BClass, wCache.Reinf.RClass, AnchorMode.OverlapCompress))
@@ -206,8 +212,49 @@ namespace RevitOSA.WallReinforcer.Revit
 
                 //Определение выпуска сверху
                 double topOv = region.GetTopOv(wCache.Reinf.DataY.D, wCache.Reinf.DataY.RClass, heightLimit, ReinfSettings.Default.reinf_RebarCover_Edge / 304.8, out int k);
-                
 
+                //Получение отверстий над регионом стены
+                region.UpperWallCaches.ForEach(c => c.GetVoidCaches());
+                List<VoidCache> upperVoidCaches = [];
+                foreach (WallCache upperWallCache in region.UpperWallCaches)
+                {
+                    upperWallCache.GetVoidCaches();
+                    upperVoidCaches.AddRange(upperWallCache.Voids);
+
+                    upperWallCache.AnalyzeForUpperCaches(500/304.8);
+                    upperWallCache.UpperWallCaches.ForEach(c => c.GetVoidCaches());
+                    upperVoidCaches.AddRange(upperWallCache.UpperWallCaches.SelectMany(c => c.Voids));
+                }    
+
+                for (int i = 0; i < wallRegionReinfMatrix.Count; i++)
+                {
+                    //Построение контура армирования по площади
+                    XYZ startPoint = region.Geom.Origins.CenterStartBottom
+                        + region.Geom.Dirs.X * (region.VRebarAlign + region.Reinf.DataY.Step * wallRegionReinfMatrix[i][1] - region.Reinf.DataY.D / 2)
+                        - region.Geom.Dirs.Y * region.Geom.Dims.T / 2;
+
+                    XYZ p0 = startPoint + region.Geom.Dirs.Z * botOv * wallRegionReinfMatrix[i][2];
+                    XYZ p1 = startPoint + region.Geom.Dirs.Z * (region.Geom.Dims.H + topOv)
+                        + region.Geom.Dirs.Z * (Math.Floor(topOv * 1.3 * 304.8 / 10) * 10 / 304.8) * wallRegionReinfMatrix[i][2] * k;
+                    XYZ p2 = p1 + region.Geom.Dirs.X * ((region.VRebarQuantities[i] - 1) * region.Reinf.DataY.Step * 2 + region.Reinf.DataY.D);
+                    XYZ p3 = p0 + region.Geom.Dirs.X * ((region.VRebarQuantities[i] - 1) * region.Reinf.DataY.Step * 2 + region.Reinf.DataY.D);
+
+                    List<Curve> arLines =
+                        [
+                            Line.CreateBound(p0,p1),
+                            Line.CreateBound(p1,p2),
+                            Line.CreateBound(p2,p3),
+                            Line.CreateBound(p3,p0)
+                        ];
+
+                    Solid arSolid = GeometryCreationUtilities.CreateExtrusionGeometry([CurveLoop.Create(arLines)], region.Geom.Dirs.Y, region.Geom.Dims.T);
+                    SolidTools.CutExtendSolidWithBoundOpenings(arSolid, wCache.Voids);
+                    SolidTools.CutExtendSolidWithUpperOpenings(arSolid, upperVoidCaches, wCache.Geom.Dims.ZBot, topOv, ReinfSettings.Default.reinf_RebarCover_Edge / 304.8);
+
+
+                    //Создание арматурного стержня, настройка зависимостей, определение параметров
+
+                }
             }
 
         }

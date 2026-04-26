@@ -349,9 +349,7 @@ namespace RevitOSA.WallReinforcer.Tools
         public static void CutExtendSolidWithUpperOpenings(this Solid solid, List<VoidCache> openings, double hostZBot, double topOv, double cutDepth)
         {
             double offset = 10.0 / 304.8;
-            List<PlanarFace> solidFaces = solid.Faces.Cast<PlanarFace>()
-                .Where(f => f.FaceNormal.Normalize().IsAlmostEqualTo(XYZ.BasisZ))
-                .ToList();
+            List<PlanarFace> solidFaces = [.. solid.Faces.Cast<PlanarFace>().Where(f => f.FaceNormal.Normalize().IsAlmostEqualTo(XYZ.BasisZ))];
 
             if (!solidFaces.Any()) return;
 
