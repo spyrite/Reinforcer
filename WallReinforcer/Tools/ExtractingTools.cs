@@ -17,67 +17,173 @@ namespace RevitOSA.WallReinforcer.Tools
 {
     public static class ExtractingTools
     {
+        #region Helper Methods
+        
+        /// <summary>
+        /// Извлекает ElementId из ElementId с учётом версии Revit
+        /// </summary>
+#if REVIT2024 || REVIT2025
+        private static int GetElementIdValue(ElementId id) => (int)id.Value;
+#else
+        private static int GetElementIdValue(ElementId id) => id.IntegerValue;
+#endif
+
+        /// <summary>
+        /// Получает материалы элемента (HostObject или FamilyInstance)
+        /// </summary>
+        /// <typeparam name="T">Тип результата: Material или string</typeparam>
+        /// <param name="elem">Элемент</param>
+        /// <param name="selector">Функция выбора из Material</param>
+        /// <returns>Список материалов</returns>
+        private static List<T> GetMaterialsCore<T>(Element elem, Func<Material, T> selector)
+        {
+            Document doc = elem.Document;
+            List<T> result = new List<T>();
+
+            if (elem is HostObject hostObject)
+            {
+                HostObjAttributes elemType = doc.GetElement(elem.GetTypeId()) as HostObjAttributes;
+                if ((elemType is WallType wallType && wallType.Kind != WallKind.Curtain) || elemType is FloorType)
+                {
+                    CompoundStructure cs = elemType.GetCompoundStructure();
+                    foreach (CompoundStructureLayer layer in cs.GetLayers())
+                    {
+                        Material material = doc.GetElement(layer.MaterialId) as Material;
+                        if (material != null) result.Add(selector(material));
+                    }
+                }
+            }
+            else if (elem is FamilyInstance familyInstance)
+            {
+                Parameter[] materialParameters = new Parameter[4];
+                
+                // Параметр "1П_Материал" из символа
+                var symbolParams = familyInstance.Symbol.GetParameters("1П_Материал");
+                if (symbolParams.Count > 0) materialParameters[2] = symbolParams[0];
+                
+                // Параметр "1П_Материал" из экземпляра
+                var instanceParams = elem.GetParameters("1П_Материал");
+                if (instanceParams.Count > 0) materialParameters[3] = instanceParams[0];
+                
+                // Стандартные параметры материала
+                materialParameters[0] = familyInstance.Symbol.get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM);
+                materialParameters[1] = familyInstance.get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM);
+
+                foreach (Parameter param in materialParameters)
+                {
+                    if (param != null && param.AsElementId() != ElementId.InvalidElementId)
+                    {
+                        Material material = doc.GetElement(param.AsElementId()) as Material;
+                        if (material != null)
+                        {
+                            result.Add(selector(material));
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Извлекает под-элементы из AssemblyInstance или зависимые элементы
+        /// </summary>
+        /// <param name="doc">Документ</param>
+        /// <param name="elem">Элемент</param>
+        /// <param name="filter">Фильтр для зависимых элементов</param>
+        /// <returns>Список ElementId под-элементов</returns>
+        private static List<ElementId> ExtractSubElements(Document doc, Element elem, ElementFilter filter)
+        {
+            List<ElementId> result = new List<ElementId>();
+
+            if (elem is AssemblyInstance ai)
+            {
+                foreach (ElementId subId in ai.GetMemberIds())
+                {
+                    if (filter.PassesFilter(doc, subId))
+                        result.Add(subId);
+                }
+            }
+            else
+            {
+                foreach (ElementId subId in elem.GetDependentElements(filter))
+                {
+                    result.Add(subId);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Извлекает Rebar из AssemblyInstance или зависимых элементов с распаковкой контейнеров
+        /// </summary>
+        private static List<int> ExtractRebarIds(Document doc, Element elem)
+        {
+            List<int> rebarIds = new List<int>();
+
+            if (elem is AssemblyInstance ai)
+            {
+                // Прямые арматуры
+                foreach (ElementId subId in ai.GetMemberIds())
+                {
+                    if (RebarFilters.Rebars.PassesFilter(doc, subId))
+                        rebarIds.Add(GetElementIdValue(subId));
+                }
+
+                // Контейнеры с арматурой
+                foreach (ElementId containerId in ai.GetMemberIds())
+                {
+                    if (RebarFilters.Containers.PassesFilter(doc, containerId))
+                    {
+                        foreach (ElementId subId in RebarContainerAssistant.Disassemble(doc, new List<ElementId> { containerId }, false))
+                            rebarIds.Add(GetElementIdValue(subId));
+                    }
+                }
+            }
+            else
+            {
+                // Прямые арматуры
+                foreach (ElementId subId in elem.GetDependentElements(RebarFilters.Rebars))
+                {
+                    rebarIds.Add(GetElementIdValue(subId));
+                }
+
+                // Контейнеры с арматурой
+                foreach (ElementId containerId in elem.GetDependentElements(RebarFilters.Containers))
+                {
+                    foreach (ElementId subId in RebarContainerAssistant.Disassemble(doc, new List<ElementId> { containerId }, false))
+                        rebarIds.Add(GetElementIdValue(subId));
+                }
+            }
+
+            return rebarIds;
+        }
+
+        #endregion
+
         #region Reinforcement caches
         public static List<RebarCache> ExtractRCs(Document doc, List<ElementId> elemIds)
         {
             List<int> allRebarIdIntegerValues = new List<int>();
+            
             foreach (ElementId id in elemIds)
             {
                 Element elem = doc.GetElement(id);
-#if REVIT2024 || REVIT2025
-                if (elem is Rebar) allRebarIdIntegerValues.Add((int)id.Value);
-#else
-                if (elem is Rebar) allRebarIdIntegerValues.Add(id.IntegerValue);
-#endif
-                else if (elem is AssemblyInstance)
+                
+                if (elem is Rebar)
                 {
-#if REVIT2024 || REVIT2025
-                    List<int> subRebarIdIntegerValues = (from subId in (elem as AssemblyInstance).GetMemberIds()
-                                                         where RebarFilters.Rebars.PassesFilter(doc, subId)
-                                                         select (int)subId.Value).ToList();
-#else
-                    List<int> subRebarIdIntegerValues = (from subId in (elem as AssemblyInstance).GetMemberIds()
-                                                         where RebarFilters.Rebars.PassesFilter(doc, subId)
-                                                         select subId.IntegerValue).ToList();
-#endif
-                    allRebarIdIntegerValues.AddRange(subRebarIdIntegerValues);
-
-                    List<ElementId> subRebarContainerIds = (from subId in (elem as AssemblyInstance).GetMemberIds()
-                                                            where RebarFilters.Containers.PassesFilter(doc, subId)
-                                                            select subId).ToList();
-                    foreach (ElementId containerId in subRebarContainerIds)
-#if REVIT2024 || REVIT2025
-                    allRebarIdIntegerValues.AddRange(from subId in RebarContainerAssistant.Disassemble(doc, new List<ElementId> { containerId }, false)
-                                                         select (int)subId.Value);    
-#else
-                        allRebarIdIntegerValues.AddRange(from subId in RebarContainerAssistant.Disassemble(doc, new List<ElementId> { containerId }, false)
-                                                         select subId.IntegerValue);
-#endif
+                    allRebarIdIntegerValues.Add(GetElementIdValue(id));
                 }
                 else
                 {
-#if REVIT2024 || REVIT2025
-                    List<int> subRebarIdIntegerValues = (from subId in elem.GetDependentElements(RebarFilters.Rebars)
-                                                         select (int)subId.Value).ToList();
-#else
-                    List<int> subRebarIdIntegerValues = (from subId in elem.GetDependentElements(RebarFilters.Rebars)
-                                                         select subId.IntegerValue).ToList();
-#endif
-                    allRebarIdIntegerValues.AddRange(subRebarIdIntegerValues);
-
-                    List<ElementId> subRebarContainerIds = (from subId in elem.GetDependentElements(RebarFilters.Containers)
-                                                            select subId).ToList();
-                    foreach (ElementId containerId in subRebarContainerIds)
-#if REVIT2024 || REVIT2025
-                    allRebarIdIntegerValues.AddRange(from subId in RebarContainerAssistant.Disassemble(doc, new List<ElementId> { containerId }, false)
-                                                         select (int)subId.Value);
-#else
-                        allRebarIdIntegerValues.AddRange(from subId in RebarContainerAssistant.Disassemble(doc, new List<ElementId> { containerId }, false)
-                                                         select subId.IntegerValue);
-#endif
+                    allRebarIdIntegerValues.AddRange(ExtractRebarIds(doc, elem));
                 }
             }
+            
             allRebarIdIntegerValues = allRebarIdIntegerValues.Distinct().ToList();
+            
 #if REVIT2024 || REVIT2025
             List<RebarCache> RPs = (from intId in allRebarIdIntegerValues
                                     select new RebarCache(doc.GetElement(new ElementId((long)intId)) as Rebar)).ToList();
@@ -87,37 +193,32 @@ namespace RevitOSA.WallReinforcer.Tools
 #endif
             return RPs;
         }
+
         public static List<RebarContainerCache> ExtractRCCs(Document doc, List<ElementId> elemIds)
         {
-            List<RebarContainer> allContainers = new List<RebarContainer>();
             ElementFilter containerFilter = new ElementClassFilter(typeof(RebarContainer));
+            List<RebarContainer> allContainers = new List<RebarContainer>();
+
             foreach (ElementId id in elemIds)
             {
                 Element elem = doc.GetElement(id);
-                if (elem is RebarContainer) allContainers.Add(elem as RebarContainer);
-                else if (elem is AssemblyInstance)
+                
+                if (elem is RebarContainer container)
                 {
-                    AssemblyInstance ai = elem as AssemblyInstance;
-                    List<Element> subElems = new List<Element>();
-                    foreach (ElementId subId in ai.GetMemberIds()) { subElems.Add(doc.GetElement(subId)); }
-                    ;
-                    List<RebarContainer> subContainers = new List<RebarContainer>();
-                    foreach (Element subElem in subElems) { subContainers.Add(subElem as RebarContainer); }
-                    ;
-                    allContainers.AddRange(subContainers);
+                    allContainers.Add(container);
                 }
                 else
                 {
-                    List<RebarContainer> subContainers = new List<RebarContainer>();
-                    foreach (ElementId subId in elem.GetDependentElements(containerFilter)) { subContainers.Add(doc.GetElement(subId) as RebarContainer); }
-                    ;
-                    allContainers.AddRange(subContainers);
+                    foreach (ElementId subId in ExtractSubElements(doc, elem, containerFilter))
+                    {
+                        RebarContainer subContainer = doc.GetElement(subId) as RebarContainer;
+                        if (subContainer != null)
+                            allContainers.Add(subContainer);
+                    }
                 }
             }
 
-            List<RebarContainerCache> RCPs = new List<RebarContainerCache>();
-            foreach (RebarContainer container in allContainers) { RCPs.Add(new RebarContainerCache(container)); }
-            return RCPs;
+            return allContainers.Select(c => new RebarContainerCache(c)).ToList();
         }
         #endregion
 
@@ -145,29 +246,26 @@ namespace RevitOSA.WallReinforcer.Tools
         }*/
 
         #region Elements
+        /// <summary>
+        /// Рекурсивно извлекает все под-компоненты FamilyInstance
+        /// </summary>
         public static List<ElementId> ExtractFamilyInstanceSubComponents(Document doc, FamilyInstance sourceInst)
         {
-            /*List<ElementId> primarySubComponentIds = sourceInst.GetSubComponentIds().ToList();
-            List<ElementId> subComponentIds = primarySubComponentIds;
-            int beforeCount = subComponentIds.Count;
-            int afterCount = subComponentIds.Count;
-            foreach (ElementId subId in primarySubComponentIds)
-            {
-                while (beforeCount < afterCount)
-                {
-
-                }
-            }*/
-
             List<ElementId> subComponentIds = sourceInst.GetSubComponentIds().ToList();
+            
+            // Итеративный обход для рекурсивного извлечения вложенных компонентов
             int i = 0;
             while (i < subComponentIds.Count)
             {
                 FamilyInstance subComponent = doc.GetElement(subComponentIds[i]) as FamilyInstance;
-                List<ElementId> additionalSubComponentIds = subComponent.GetSubComponentIds().ToList();
-                subComponentIds.AddRange(additionalSubComponentIds);
+                if (subComponent != null)
+                {
+                    List<ElementId> additionalSubComponentIds = subComponent.GetSubComponentIds().ToList();
+                    subComponentIds.AddRange(additionalSubComponentIds);
+                }
                 i++;
             }
+            
             return subComponentIds;
         }
         public static Dictionary<Group, CICache> ExtractCIGroupsDict(View view)
@@ -204,391 +302,35 @@ namespace RevitOSA.WallReinforcer.Tools
         #region Materials
         public static List<string> GetMaterialNames(Element elem)
         {
-            Document doc = elem.Document;
-            List<string> materialNames = new List<string>();
-            if (elem is HostObject)
-            {
-                HostObjAttributes elemType = doc.GetElement(elem.GetTypeId()) as HostObjAttributes;
-                if (elemType is WallType && (elemType as WallType).Kind != WallKind.Curtain || elemType is FloorType)
-                {
-                    CompoundStructure cs = elemType.GetCompoundStructure();
-                    foreach (CompoundStructureLayer layer in cs.GetLayers())
-                    {
-                        Material material = doc.GetElement(layer.MaterialId) as Material;
-                        materialNames.Add(material.Name);
-                    }
-                }
-            }
-            else if (elem is FamilyInstance)
-            {
-                Parameter materialParameter3 = null;
-                if ((elem as FamilyInstance).Symbol.GetParameters("1П_Материал").Count > 0) materialParameter3 = (elem as FamilyInstance).Symbol.GetParameters("1П_Материал")[0];
-                Parameter materialParameter4 = null;
-                if (elem.GetParameters("1П_Материал").Count > 0) materialParameter4 = elem.GetParameters("1П_Материал")[0];
-                List<Parameter> materialParameters = new List<Parameter>()
-                    {
-                        (elem as FamilyInstance).Symbol.get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM),
-                        (elem as FamilyInstance).get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM),
-                        materialParameter3,
-                        materialParameter4
-                    };
-                foreach (Parameter materialParameter in materialParameters)
-                {
-                    if (materialParameter != null && materialParameter.AsElementId() != ElementId.InvalidElementId)
-                    {
-                        ElementId materialId = materialParameter.AsElementId();
-                        Material material = doc.GetElement(materialId) as Material;
-                        materialNames.Add(material.Name);
-                        break;
-                    }
-                }
-            }
-            return materialNames;
+            return GetMaterialsCore(elem, m => m.Name);
         }
+
         public static List<Material> GetMaterials(Element elem)
         {
-            Document doc = elem.Document;
-            List<Material> materials = new List<Material>();
-            if (elem is HostObject)
-            {
-                HostObjAttributes elemType = doc.GetElement(elem.GetTypeId()) as HostObjAttributes;
-                if (elemType is WallType && (elemType as WallType).Kind != WallKind.Curtain || elemType is FloorType)
-                {
-                    CompoundStructure cs = elemType.GetCompoundStructure();
-                    foreach (CompoundStructureLayer layer in cs.GetLayers())
-                    {
-                        Material material = doc.GetElement(layer.MaterialId) as Material;
-                        materials.Add(material);
-                    }
-                }
-            }
-            else if (elem is FamilyInstance)
-            {
-                Parameter materialParameter3 = null;
-                if ((elem as FamilyInstance).Symbol.GetParameters("1П_Материал").Count > 0) materialParameter3 = (elem as FamilyInstance).Symbol.GetParameters("1П_Материал")[0];
-                Parameter materialParameter4 = null;
-                if (elem.GetParameters("1П_Материал").Count > 0) materialParameter4 = elem.GetParameters("1П_Материал")[0];
-                List<Parameter> materialParameters = new List<Parameter>()
-                    {
-                        (elem as FamilyInstance).Symbol.get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM),
-                        (elem as FamilyInstance).get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM),
-                        materialParameter3,
-                        materialParameter4
-                    };
-                foreach (Parameter materialParameter in materialParameters)
-                {
-                    if (materialParameter != null && materialParameter.AsElementId() != ElementId.InvalidElementId)
-                    {
-                        ElementId materialId = materialParameter.AsElementId();
-                        Material material = doc.GetElement(materialId) as Material;
-                        materials.Add(material);
-                        break;
-                    }
-                }
-            }
-            return materials;
+            return GetMaterialsCore(elem, m => m);
         }
         #endregion
 
         #region Caches
+        
+        /// <summary>
+        /// Извлекает VoidCache из HostObject (Wall, Floor)
+        /// </summary>
         public static List<VoidCache> ExtractVoidCaches(Element elem)
         {
             Document doc = elem.Document;
-            List<VoidCache> voidCaches = new List<VoidCache>();
-            switch (elem.GetType().Name)
-            {
-                case "Wall":
-                    Wall wall = elem as Wall;
-                    voidCaches = (from id in wall.FindInserts(false, false, false, false)
-                                  where doc.GetElement(id) is FamilyInstance
-                                  && (doc.GetElement(id) as FamilyInstance).Host.Id == wall.Id
-                                  select new VoidCache(doc.GetElement(id) as FamilyInstance)).ToList();
-                    break;
-                case "Floor":
-                    Floor slab = elem as Floor;
-                    voidCaches = (from id in slab.FindInserts(false, false, false, false)
-                                  where doc.GetElement(id) is FamilyInstance
-                                  && (doc.GetElement(id) as FamilyInstance).Host.Id == slab.Id
-                                  select new VoidCache(doc.GetElement(id) as FamilyInstance)).ToList();
-                    break;
-            }
-            return voidCaches;
-        }
-        public static List<GridCache> GetNearestGridCaches(GridCache sourceGC)
-        {
-            Document doc = sourceGC.Grid.Document;
-            List<GridCache> nearGPs = new List<GridCache>() { null, null };
-            FilteredElementCollector collector = new FilteredElementCollector(doc).OfClass(typeof(Grid));
-
-            List<GridCache> otherGCs = (from elem in collector.Excluding(new List<ElementId> { sourceGC.Grid.Id })
-                                        where ((elem as Grid).Curve as Line).Direction.IsAlmostEqualTo(sourceGC.Dirs.X)
-                                        || ((elem as Grid).Curve as Line).Direction.IsAlmostEqualTo(-sourceGC.Dirs.X)
-                                        select new GridCache(elem as Grid)).ToList();
-
-            List<Plane> planes = (from gp in otherGCs select gp.CenterPlane).ToList();
-            List<XYZ> points = new List<XYZ>();
-            foreach (Plane plane in planes)
-            {
-                plane.Project(sourceGC.Centers[0], out UV uv, out double dst);
-                points.Add(plane.Origin + plane.XVec * uv.U + plane.YVec * uv.V);
-            }
-            List<XYZ> dirs = new List<XYZ> { -sourceGC.Dirs.Y, sourceGC.Dirs.Y };
-            List<Line> rays = (from dir in dirs select Line.CreateBound(sourceGC.Centers[0], sourceGC.Centers[0] + 100000 * dir)).ToList();
-
-            for (int i = 0; i < 2; i++)
-            {
-                List<double> projectPars = (from point in points select Math.Round(rays[i].Project(point).Parameter, 5)).ToList();
-                List<double> dsts = (from dst in projectPars where dst > 0 select dst).ToList();
-                if (dsts.Count > 0)
-                {
-                    nearGPs[i] = otherGCs[projectPars.IndexOf(dsts.Min())];
-                    nearGPs[i].RayWhereGridHasBeenCatchedDir = rays[i].Direction.Normalize();
-                }
-            }
-            return nearGPs;
-        }
-        public static List<RebarHostCache> GetNearestHostCaches(GeometryCache geomCache, List<PlanarFace> faces, Side side, double dst)
-        {
-            Document doc = geomCache.Elem.Document;
-            List<RebarHostCache> hostCaches = new List<RebarHostCache>();
-            ElementFilter lvlFilter = null;
-            switch (side)
-            {
-                case Side.Bottom: lvlFilter = new ElementLevelFilter(geomCache.LvlIds.Bot); break;
-                case Side.Top: lvlFilter = new ElementLevelFilter(geomCache.LvlIds.Top); break;
-            }
-            List<ElementFilter> filters = new List<ElementFilter>
-            {
-                new LogicalOrFilter(new List<ElementFilter> { StructureElementFilters.ColumnsOrWalls, StructureElementFilters.Floors, StructureElementFilters.Beams }),
-                lvlFilter,
-            };
-            ElementFilter filter = new LogicalAndFilter(filters);
-            FilteredElementCollector collector = new FilteredElementCollector(doc).WherePasses(filter);
-
-            foreach (PlanarFace face in faces)
-                hostCaches.AddRange(from elem in GetAttachedElements(face, collector, dst)
-                                    select GetRebarHostCache(elem));
-            return hostCaches;
-        }
-        public static List<SlabCache> GetNearestSlabCaches(GeometryCache geomCache, Side side)
-        {
-            Document doc = geomCache.Elem.Document;
-            List<SlabCache> slabCaches = new List<SlabCache>();
-            ElementFilter filter;
-            switch (side)
-            {
-                case Side.Bottom: filter = new ElementLevelFilter(geomCache.LvlIds.Bot); break;
-                case Side.Top: filter = new ElementLevelFilter(geomCache.LvlIds.Top); break;
-                default: return slabCaches;
-            }
-            FilteredElementCollector collector = new FilteredElementCollector(doc).OfClass(typeof(Floor)).WherePasses(filter);
-            foreach (Element elem in collector)
-            {
-                SlabCache slabCache = new SlabCache(elem as Floor);
-                switch (side)
-                {
-                    case Side.Bottom:
-                        slabCache.GetSupportLines(geomCache, Side.Top);
-                        if (slabCache.SupportLines.AllTop.Count > 0) slabCaches.Add(slabCache);
-                        break;
-                    case Side.Top:
-                        slabCache.GetSupportLines(geomCache, Side.Bottom);
-                        if (slabCache.SupportLines.AllBottom.Count > 0) slabCaches.Add(slabCache);
-                        break;
-                }
-            }
-            return slabCaches;
-        }
-        public static List<WallCache> GetNearestWallCaches(GeometryCache geomCache, Side side)
-        {
-            Document doc = geomCache.Elem.Document;
-            List<WallCache> wallCaches = new List<WallCache>();
-            Transform transform0;
-            List<XYZ> points;
-
-            switch (side)
-            {
-                case Side.Bottom:
-                    transform0 = Transform.CreateTranslation(-geomCache.Dirs.Z * 500 / 304.8);
-                    points = new List<XYZ>
-                    {
-                        transform0.OfPoint(geomCache.Origins.CenterStartBottom),
-                        transform0.OfPoint(geomCache.Origins.CenterEndBottom)
-                    };
-                    break;
-                case Side.Top:
-                    transform0 = Transform.CreateTranslation(geomCache.Dirs.Z * 500 / 304.8);
-                    points = new List<XYZ>
-                    {
-                        transform0.OfPoint(geomCache.Origins.CenterStartTop),
-                        transform0.OfPoint(geomCache.Origins.CenterEndTop)
-                    };
-                    break;
-                default: return wallCaches;
-            }
-
-            Transform transform1 = Transform.CreateTranslation(-geomCache.Dirs.Z * 10 / 304.8);
-            Transform transform2 = Transform.CreateTranslation(geomCache.Dirs.Z * 10 / 304.8);
-
-            ElementFilter filter1 = StructureElementFilters.Walls;
-            points = points.OrderBy(p => p, new Sorting.XYZCoordsComparer()).ToList();
-            Outline outline = new Outline(transform1.OfPoint(points.First()), transform2.OfPoint(points.Last()));
-            ElementFilter filter2 = new BoundingBoxIntersectsFilter(outline);
-            ElementFilter filter = new LogicalAndFilter(filter1, filter2);
-            FilteredElementCollector collector = new FilteredElementCollector(doc).WherePasses(filter);
-            Line cutLine = geomCache.Lines.CenterBot.CreateTransformed(transform0) as Line;
-
-            foreach (Element elem in collector)
-            {
-                WallCache wallCache = new WallCache(elem as Wall);
-                if (wallCache.Geom.Solid == null) wallCache.Geom.GetSolidData();
-                List<Curve> spotLines = wallCache.Geom.Solid.IntersectWithCurve(cutLine, null).ToList();
-                if (spotLines.Count > 0)
-                {
-                    if (geomCache is GeometryWallCache || geomCache is GeometryColumnCache)
-                    {
-                        if (wallCache.Geom.Dirs.X.IsAlmostEqualTo(geomCache.Dirs.X) || wallCache.Geom.Dirs.X.IsAlmostEqualTo(-geomCache.Dirs.X))
-                            wallCaches.Add(wallCache);
-                    }
-                    else wallCaches.Add(wallCache);
-                }
-            }
-            return wallCaches;
-        }
-        public static List<ColumnCache> GetNearestColumnCaches(GeometryCache geomCache, Side side)
-        {
-            Document doc = geomCache.Elem.Document;
-            List<ColumnCache> colCaches = new List<ColumnCache>();
-            Transform transform0;
-            List<XYZ> points;
-
-            switch (side)
-            {
-                case Side.Bottom:
-                    transform0 = Transform.CreateTranslation(-geomCache.Dirs.Z * 500 / 304.8);
-                    points = new List<XYZ>
-                    {
-                        transform0.OfPoint(geomCache.Origins.CenterStartBottom),
-                        transform0.OfPoint(geomCache.Origins.CenterEndBottom)
-                    };
-                    break;
-                case Side.Top:
-                    transform0 = Transform.CreateTranslation(geomCache.Dirs.Z * 500 / 304.8);
-                    points = new List<XYZ>
-                    {
-                        transform0.OfPoint(geomCache.Origins.CenterStartTop),
-                        transform0.OfPoint(geomCache.Origins.CenterEndTop)
-                    };
-                    break;
-                default: return colCaches;
-            }
-
-            Transform transform1 = Transform.CreateTranslation(-geomCache.Dirs.Z * 10 / 304.8);
-            Transform transform2 = Transform.CreateTranslation(geomCache.Dirs.Z * 10 / 304.8);
-
-            ElementFilter filter1 = StructureElementFilters.Columns;
-            points = points.OrderBy(p => p, new Sorting.XYZCoordsComparer()).ToList();
-            Outline outline = new Outline(transform1.OfPoint(points.First()), transform2.OfPoint(points.Last()));
-            ElementFilter filter2 = new BoundingBoxIntersectsFilter(outline);
-            ElementFilter filter = new LogicalAndFilter(filter1, filter2);
-            FilteredElementCollector collector = new FilteredElementCollector(doc).WherePasses(filter);
-            Line cutLine = geomCache.Lines.CenterBot.CreateTransformed(transform0) as Line;
-
-            foreach (Element elem in collector)
-            {
-                ColumnCache colCache = new ColumnCache(elem);
-                if (colCache.Geom.Solid == null) colCache.Geom.GetSolidData();
-                List<Curve> spotLines = colCache.Geom.Solid.IntersectWithCurve(cutLine, null).ToList();
-                if (spotLines.Count > 0)
-                {
-                    if (geomCache is GeometryWallCache || geomCache is GeometryColumnCache)
-                    {
-                        if (colCache.Geom.Dirs.X.IsAlmostEqualTo(geomCache.Dirs.X) || colCache.Geom.Dirs.X.IsAlmostEqualTo(-geomCache.Dirs.X))
-                            colCaches.Add(colCache);
-                    }
-                    else colCaches.Add(colCache);
-                }
-            }
-            return colCaches;
+            
+            if (elem is not HostObject hostObject)
+                return new List<VoidCache>();
+                
+            return (from id in hostObject.FindInserts(false, false, false, false)
+                    where doc.GetElement(id) is FamilyInstance fi && fi.Host.Id == hostObject.Id
+                    select new VoidCache(fi)).ToList();
         }
         
-        public static List<WallEndCache> GetWallEndCaches(WallCache wCache)
-        {
-            Document doc = wCache.Elem.Document;
-            List<WallEndCache> endCaches = new List<WallEndCache> { null, null };
-            List<ElementFilter> filters = new List<ElementFilter>
-            {
-                StructureElementFilters.ColumnsOrWalls,
-                new ElementLevelFilter(wCache.Geom.LvlIds.Bot),
-            };
-            ElementFilter filter = new LogicalAndFilter(filters);
-            FilteredElementCollector collector = new FilteredElementCollector(doc).WherePasses(filter);
-            List<XYZ> endPoints = new List<XYZ>
-            {
-                wCache.Geom.Origins.CenterStartBottom,
-                wCache.Geom.Origins.CenterEndBottom
-            };
-            List<int> tokens = new List<int> { 1, -1 };
-            for (int i = 0; i < 2; i++)
-            {
-                filters = new List<ElementFilter>
-                {
-                    new BoundingBoxContainsPointFilter(endPoints[i] + wCache.Geom.Dirs.X * 10 / 304.8 * tokens[i] 
-                    - wCache.Geom.Dirs.Y * (wCache.Geom.Dims.T / 2 + 10 / 304.8) + wCache.Geom.Dirs.Z * 10 / 304.8),
-                    new BoundingBoxContainsPointFilter(endPoints[i] + wCache.Geom.Dirs.X * 10 / 304.8 * tokens[i] 
-                    + wCache.Geom.Dirs.Y * (wCache.Geom.Dims.T / 2 + 10 / 304.8) + wCache.Geom.Dirs.Z * 10 / 304.8),
-                    new BoundingBoxContainsPointFilter(endPoints[i] - wCache.Geom.Dirs.X * 10 / 304.8 * tokens[i] 
-                    - wCache.Geom.Dirs.Y * (wCache.Geom.Dims.T / 2 + 10 / 304.8) + wCache.Geom.Dirs.Z * 10 / 304.8),
-                    new BoundingBoxContainsPointFilter(endPoints[i] - wCache.Geom.Dirs.X * 10 / 304.8 * tokens[i] 
-                    + wCache.Geom.Dirs.Y * (wCache.Geom.Dims.T / 2 + 10 / 304.8) + wCache.Geom.Dirs.Z * 10 / 304.8)
-                };
-                ElementFilter filter1 = new LogicalOrFilter(filters[0], filters[1]);
-                ElementFilter filter2 = new LogicalOrFilter(filters[2], filters[3]);
-
-                List<Element> attachedElements = (from elem in collector
-                                                  where filter1.PassesFilter(elem)
-                                                  || filter2.PassesFilter(elem)
-                                                  select elem).ToList();
-                if (attachedElements.Count > 0)
-                {
-                    XYZ origin = endPoints[i];
-                    XYZ xDir = wCache.Geom.Dirs.X * tokens[i];
-                    WallEndCache endCache = new(wCache, origin, xDir);
-                }
-            }
-            ;
-            return endCaches;
-        }
-        public static List<VoidCache> GetEqualUpperVoids(VoidCache voidCache)
-        {
-            List<VoidCache> equalUpperVoidAtEnds = new List<VoidCache>() { null, null };
-            List<XYZ> checkPoints1 = new List<XYZ>
-            {
-                voidCache.Geom.Origins.CenterStartBottom,
-                voidCache.Geom.Origins.CenterEndBottom
-            };
-            List<WallCache> upperWallCaches = GetNearestHostCaches(voidCache.HostCache.Geom, voidCache.HostCache.Geom.Faces.Top, Side.Top, 500 / 304.8).OfType<WallCache>().ToList();
-            foreach (WallCache upperWallCache in upperWallCaches)
-            {
-                List<VoidCache> upperVoidCaches = ExtractVoidCaches(upperWallCache.Elem);
-                foreach (VoidCache upperVoidCache in upperVoidCaches)
-                {
-                    for (int i = 0; i < 2; i++)
-                    {
-                        List<XYZ> checkPoints2 = new List<XYZ>
-                        {
-                            upperVoidCache.Geom.Origins.CenterStartBottom,
-                            upperVoidCache.Geom.Origins.CenterEndBottom
-                        };
-                        Line checkLine = Line.CreateBound(checkPoints1[i], checkPoints2[i]);
-                        if (GeometryTools.VecABS(checkLine.Direction).IsAlmostEqualTo(GeometryTools.VecABS(voidCache.Geom.Dirs.Z)))
-                            equalUpperVoidAtEnds[i] = upperVoidCache;
-                    }
-                    if (!equalUpperVoidAtEnds.Contains(null)) break;
-                }
-            }
-            return equalUpperVoidAtEnds;
-        }
+        /// <summary>
+        /// Создаёт соответствующий кэш для элемента на основе его типа
+        /// </summary>
         public static RebarHostCache GetRebarHostCache(this Element elem)
         {
             if (StructureElementFilters.Walls.PassesFilter(elem))
@@ -602,15 +344,306 @@ namespace RevitOSA.WallReinforcer.Tools
             else
                 return null;
         }
-
+        
+        /// <summary>
+        /// Извлекает прилегающие элементы к грани PlanarFace
+        /// </summary>
         public static List<Element> GetAttachedElements(this PlanarFace face, FilteredElementCollector collector, double dst)
         {
-            Solid catchSolid = GeometryCreationUtilities.CreateExtrusionGeometry(face.GetEdgesAsCurveLoops(), face.FaceNormal, dst);
-            ElementFilter secondaryFilter = new ElementIntersectsSolidFilter(catchSolid);
-            List<Element> attachedElems = (from elem in collector
-                                           where secondaryFilter.PassesFilter(elem)
-                                           select elem).ToList();
-            return attachedElems;
+            Solid catchSolid = GeometryCreationUtilities.CreateExtrusionGeometry(
+                face.GetEdgesAsCurveLoops(), 
+                face.FaceNormal, 
+                dst);
+            ElementFilter filter = new ElementIntersectsSolidFilter(catchSolid);
+            
+            return (from elem in collector
+                    where filter.PassesFilter(elem)
+                    select elem).ToList();
+        }
+        
+        /// <summary>
+        /// Извлекает ближайшие кэш-объекты элементов (стены, колонны, балки, плиты)
+        /// </summary>
+        public static List<RebarHostCache> GetNearestHostCaches(GeometryCache geomCache, List<PlanarFace> faces, Side side, double dst)
+        {
+            Document doc = geomCache.Elem.Document;
+            
+            ElementFilter lvlFilter = side switch
+            {
+                Side.Bottom => new ElementLevelFilter(geomCache.LvlIds.Bot),
+                Side.Top => new ElementLevelFilter(geomCache.LvlIds.Top),
+                _ => null
+            };
+            
+            if (lvlFilter == null) return new List<RebarHostCache>();
+            
+            ElementFilter filter = new LogicalAndFilter(
+                new LogicalOrFilter(new List<ElementFilter> 
+                { 
+                    StructureElementFilters.ColumnsOrWalls, 
+                    StructureElementFilters.Floors, 
+                    StructureElementFilters.Beams 
+                }),
+                lvlFilter
+            );
+            
+            FilteredElementCollector collector = new FilteredElementCollector(doc).WherePasses(filter);
+            
+            return (from face in faces
+                    from elem in GetAttachedElements(face, collector, dst)
+                    select GetRebarHostCache(elem))
+                    .ToList();
+        }
+        
+        /// <summary>
+        /// Извлекает ближайшие плиты (SlabCache) указанной стороны
+        /// </summary>
+        public static List<SlabCache> GetNearestSlabCaches(GeometryCache geomCache, Side side)
+        {
+            Document doc = geomCache.Elem.Document;
+            
+            ElementFilter filter = side switch
+            {
+                Side.Bottom => new ElementLevelFilter(geomCache.LvlIds.Bot),
+                Side.Top => new ElementLevelFilter(geomCache.LvlIds.Top),
+                _ => null
+            };
+            
+            if (filter == null) return new List<SlabCache>();
+            
+            FilteredElementCollector collector = new FilteredElementCollector(doc)
+                .OfClass(typeof(Floor))
+                .WherePasses(filter);
+            
+            return (from Floor elem in collector
+                    let slabCache = new SlabCache(elem)
+                    where CheckSlabSupport(slabCache, geomCache, side)
+                    select slabCache).ToList();
+        }
+        
+        /// <summary>
+        /// Проверяет, является ли плита опорой для геометрии
+        /// </summary>
+        private static bool CheckSlabSupport(SlabCache slabCache, GeometryCache geomCache, Side side)
+        {
+            switch (side)
+            {
+                case Side.Bottom:
+                    slabCache.GetSupportLines(geomCache, Side.Top);
+                    return slabCache.SupportLines.AllTop.Count > 0;
+                case Side.Top:
+                    slabCache.GetSupportLines(geomCache, Side.Bottom);
+                    return slabCache.SupportLines.AllBottom.Count > 0;
+                default:
+                    return false;
+            }
+        }
+        
+        /// <summary>
+        /// Извлекает ближайшие стены или колонны указанной стороны
+        /// </summary>
+        private static List<T> GetNearestVerticalElements<T>(GeometryCache geomCache, Side side, Func<Element, T> cacheFactory)
+            where T : RebarHostCache
+        {
+            Document doc = geomCache.Elem.Document;
+            
+            if (!TryCreateTransforms(geomCache, side, out Transform transform0, out List<XYZ> points))
+                return new List<T>();
+            
+            Transform transform1 = Transform.CreateTranslation(-geomCache.Dirs.Z * 10 / 304.8);
+            Transform transform2 = Transform.CreateTranslation(geomCache.Dirs.Z * 10 / 304.8);
+            
+            ElementFilter filter1 = typeof(T) == typeof(WallCache) 
+                ? StructureElementFilters.Walls 
+                : StructureElementFilters.Columns;
+                
+            points = points.OrderBy(p => p, new Sorting.XYZCoordsComparer()).ToList();
+            Outline outline = new Outline(transform1.OfPoint(points.First()), transform2.OfPoint(points.Last()));
+            ElementFilter filter2 = new BoundingBoxIntersectsFilter(outline);
+            ElementFilter filter = new LogicalAndFilter(filter1, filter2);
+            
+            FilteredElementCollector collector = new FilteredElementCollector(doc).WherePasses(filter);
+            Line cutLine = geomCache.Lines.CenterBot.CreateTransformed(transform0) as Line;
+            
+            var result = new List<T>();
+            foreach (Element elem in collector)
+            {
+                T cache = cacheFactory(elem);
+                if (cache.Geom.Solid == null) cache.Geom.GetSolidData();
+                
+                List<Curve> spotLines = cache.Geom.Solid.IntersectWithCurve(cutLine, null).ToList();
+                if (spotLines.Count == 0) continue;
+                
+                // Проверка направления для стен и колонн
+                if (geomCache is GeometryWallCache || geomCache is GeometryColumnCache)
+                {
+                    if (!cache.Geom.Dirs.X.IsAlmostEqualTo(geomCache.Dirs.X) && 
+                        !cache.Geom.Dirs.X.IsAlmostEqualTo(-geomCache.Dirs.X))
+                        continue;
+                }
+                
+                result.Add(cache);
+            }
+            
+            return result;
+        }
+        
+        /// <summary>
+        /// Пытается создать трансформации для поиска вертикальных элементов
+        /// </summary>
+        private static bool TryCreateTransforms(GeometryCache geomCache, Side side, out Transform transform0, out List<XYZ> points)
+        {
+            transform0 = null;
+            points = null;
+            
+            switch (side)
+            {
+                case Side.Bottom:
+                    transform0 = Transform.CreateTranslation(-geomCache.Dirs.Z * 500 / 304.8);
+                    points = new List<XYZ>
+                    {
+                        transform0.OfPoint(geomCache.Origins.CenterStartBottom),
+                        transform0.OfPoint(geomCache.Origins.CenterEndBottom)
+                    };
+                    return true;
+                    
+                case Side.Top:
+                    transform0 = Transform.CreateTranslation(geomCache.Dirs.Z * 500 / 304.8);
+                    points = new List<XYZ>
+                    {
+                        transform0.OfPoint(geomCache.Origins.CenterStartTop),
+                        transform0.OfPoint(geomCache.Origins.CenterEndTop)
+                    };
+                    return true;
+                    
+                default:
+                    return false;
+            }
+        }
+        
+        /// <summary>
+        /// Извлекает ближайшие стены (WallCache) указанной стороны
+        /// </summary>
+        public static List<WallCache> GetNearestWallCaches(GeometryCache geomCache, Side side)
+        {
+            return GetNearestVerticalElements(geomCache, side, elem => new WallCache(elem as Wall));
+        }
+        
+        /// <summary>
+        /// Извлекает ближайшие колонны (ColumnCache) указанной стороны
+        /// </summary>
+        public static List<ColumnCache> GetNearestColumnCaches(GeometryCache geomCache, Side side)
+        {
+            return GetNearestVerticalElements(geomCache, side, elem => new ColumnCache(elem));
+        }
+        
+        /// <summary>
+        /// Извлекает кэши окончаний стены (WallEndCache)
+        /// </summary>
+        public static List<WallEndCache> GetWallEndCaches(WallCache wCache)
+        {
+            Document doc = wCache.Elem.Document;
+            List<WallEndCache> endCaches = new List<WallEndCache> { null, null };
+            
+            ElementFilter filter = new LogicalAndFilter(
+                StructureElementFilters.ColumnsOrWalls,
+                new ElementLevelFilter(wCache.Geom.LvlIds.Bot)
+            );
+            
+            FilteredElementCollector collector = new FilteredElementCollector(doc).WherePasses(filter);
+            List<XYZ> endPoints = new List<XYZ>
+            {
+                wCache.Geom.Origins.CenterStartBottom,
+                wCache.Geom.Origins.CenterEndBottom
+            };
+            List<int> tokens = new List<int> { 1, -1 };
+            
+            for (int i = 0; i < 2; i++)
+            {
+                if (HasAdjacentElements(collector, wCache, endPoints[i], tokens[i]))
+                {
+                    XYZ origin = endPoints[i];
+                    XYZ xDir = wCache.Geom.Dirs.X * tokens[i];
+                    endCaches[i] = new WallEndCache(wCache, origin, xDir);
+                }
+            }
+            
+            return endCaches;
+        }
+        
+        /// <summary>
+        /// Проверяет наличие прилегающих элементов к окончанию стены
+        /// </summary>
+        private static bool HasAdjacentElements(FilteredElementCollector collector, WallCache wCache, XYZ endPoint, int token)
+        {
+            double offset = 10 / 304.8;
+            double halfThickness = wCache.Geom.Dims.T / 2 + offset;
+            
+            var checkPoints = new List<XYZ>
+            {
+                endPoint + wCache.Geom.Dirs.X * offset * token - wCache.Geom.Dirs.Y * halfThickness + wCache.Geom.Dirs.Z * offset,
+                endPoint + wCache.Geom.Dirs.X * offset * token + wCache.Geom.Dirs.Y * halfThickness + wCache.Geom.Dirs.Z * offset,
+                endPoint - wCache.Geom.Dirs.X * offset * token - wCache.Geom.Dirs.Y * halfThickness + wCache.Geom.Dirs.Z * offset,
+                endPoint - wCache.Geom.Dirs.X * offset * token + wCache.Geom.Dirs.Y * halfThickness + wCache.Geom.Dirs.Z * offset
+            };
+            
+            ElementFilter filter1 = new LogicalOrFilter(
+                new BoundingBoxContainsPointFilter(checkPoints[0]),
+                new BoundingBoxContainsPointFilter(checkPoints[1])
+            );
+            ElementFilter filter2 = new LogicalOrFilter(
+                new BoundingBoxContainsPointFilter(checkPoints[2]),
+                new BoundingBoxContainsPointFilter(checkPoints[3])
+            );
+            
+            return (from elem in collector
+                    where filter1.PassesFilter(elem) || filter2.PassesFilter(elem)
+                    select elem).Any();
+        }
+        
+        /// <summary>
+        /// Находит одинаковые верхние проёмы (VoidCache) для указанного проёма
+        /// </summary>
+        public static List<VoidCache> GetEqualUpperVoids(VoidCache voidCache)
+        {
+            List<VoidCache> equalUpperVoidAtEnds = new List<VoidCache>() { null, null };
+            List<XYZ> checkPoints1 = new List<XYZ>
+            {
+                voidCache.Geom.Origins.CenterStartBottom,
+                voidCache.Geom.Origins.CenterEndBottom
+            };
+            
+            List<WallCache> upperWallCaches = GetNearestHostCaches(
+                voidCache.HostCache.Geom, 
+                voidCache.HostCache.Geom.Faces.Top, 
+                Side.Top, 
+                500 / 304.8
+            ).OfType<WallCache>().ToList();
+            
+            foreach (WallCache upperWallCache in upperWallCaches)
+            {
+                List<VoidCache> upperVoidCaches = ExtractVoidCaches(upperWallCache.Elem);
+                
+                foreach (VoidCache upperVoidCache in upperVoidCaches)
+                {
+                    for (int i = 0; i < 2; i++)
+                    {
+                        List<XYZ> checkPoints2 = new List<XYZ>
+                        {
+                            upperVoidCache.Geom.Origins.CenterStartBottom,
+                            upperVoidCache.Geom.Origins.CenterEndBottom
+                        };
+                        
+                        Line checkLine = Line.CreateBound(checkPoints1[i], checkPoints2[i]);
+                        if (GeometryTools.VecABS(checkLine.Direction).IsAlmostEqualTo(GeometryTools.VecABS(voidCache.Geom.Dirs.Z)))
+                            equalUpperVoidAtEnds[i] = upperVoidCache;
+                    }
+                    
+                    if (!equalUpperVoidAtEnds.Contains(null)) break;
+                }
+            }
+            
+            return equalUpperVoidAtEnds;
         }
         #endregion
 
