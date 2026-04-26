@@ -8,12 +8,15 @@ namespace RevitOSA.WallReinforcer.Caching
     public class GeometryWallIntersectionCache : GeometryCache
     {
         // Конструкторы
-        public GeometryWallIntersectionCache(GeometryWallCache geometryWallCache, List<GeometryCache> attachedGeometryCaches, XYZ origin)
+        public GeometryWallIntersectionCache(GeometryWallCache geometryWallCache, List<GeometryCache> attachedGeometryCaches, XYZ origin) : base(geometryWallCache.Elem)
         {
             DimSets = new List<ControlDimensions>();
+            
+            // 1. Получаем базовые направления и размеры
             XYZ yDir = geometryWallCache.Dirs.Y;
             double l = geometryWallCache.Dims.T;
 
+            // 2. Обработка присоединенной геометрии
             if (attachedGeometryCaches != null && attachedGeometryCaches.Count > 0)
             {
                 foreach (GeometryCache attachedGeomCache in attachedGeometryCaches)
@@ -40,6 +43,7 @@ namespace RevitOSA.WallReinforcer.Caching
                 }
             }
 
+            // 3. Инициализация направлений
             Dirs = new Directions
             {
                 X = geometryWallCache.Dirs.X,
@@ -47,6 +51,7 @@ namespace RevitOSA.WallReinforcer.Caching
                 Z = geometryWallCache.Dirs.Z
             };
 
+            // 4. Расчет размеров и координат
             Dims = new ControlDimensions
             {
                 L = l,
@@ -54,6 +59,7 @@ namespace RevitOSA.WallReinforcer.Caching
                 T = geometryWallCache.Dims.T
             };
 
+            // 5. Инициализация контрольных точек
             Origins = new ControlPoints()
             {
                 CenterStartBottom = origin - Dirs.X * Dims.L / 2,
