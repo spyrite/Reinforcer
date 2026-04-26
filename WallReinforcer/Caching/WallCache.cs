@@ -165,7 +165,7 @@ namespace RevitOSA.WallReinforcer.Caching
             Intersections = GetWallIntersectionCaches();
             Debug.WriteLine($"[WallCache] Найдено пересечений: {Intersections.Count}");
 
-            Ends = ExtractingTools.GetWallEndCaches(this);
+            Ends = GetWallEndCaches();
             Debug.WriteLine($"[WallCache] Найдено окончаний: {Ends.Count}");
 
             Regions = GetWallRegionCaches();
@@ -278,7 +278,7 @@ namespace RevitOSA.WallReinforcer.Caching
         public List<XYZ> GetWallRegionsPointsFromEnds()
         {
             List<XYZ> regionsPoints = new List<XYZ>();
-            if (Ends == null) Ends = ExtractingTools.GetWallEndCaches(this);
+            if (Ends == null) Ends = GetWallEndCaches();
             foreach (WallEndCache end in Ends)
             {
                 if (end != null)
@@ -399,6 +399,65 @@ namespace RevitOSA.WallReinforcer.Caching
             }
             return intersectionCaches;
         }
+        private List<WallEndCache> GetWallEndCaches()
+        {
+            Document doc = Elem.Document;
+            List<WallEndCache> endCaches = new List<WallEndCache> { null, null };
+
+            ElementFilter filter = new LogicalAndFilter(
+                StructureElementFilters.ColumnsOrWalls,
+                new ElementLevelFilter(Geom.LvlIds.Bot)
+            );
+
+            FilteredElementCollector collector = new FilteredElementCollector(doc).WherePasses(filter);
+            List<XYZ> endPoints = new List<XYZ>
+            {
+                Geom.Origins.CenterStartBottom,
+                Geom.Origins.CenterEndBottom
+            };
+            List<int> tokens = new List<int> { 1, -1 };
+
+            for (int i = 0; i < 2; i++)
+            {
+                if (HasAdjacentElements(collector, this, endPoints[i], tokens[i]))
+                {
+                    XYZ origin = endPoints[i];
+                    XYZ xDir = Geom.Dirs.X * tokens[i];
+                    endCaches[i] = new WallEndCache(this, origin, xDir);
+                }
+            }
+
+            return endCaches;
+        }
+
+        /// <summary>
+        /// Проверяет наличие прилегающих элементов к окончанию стены
+        /// </summary>
+        private static bool HasAdjacentElements(FilteredElementCollector collector, WallCache wCache, XYZ endPoint, int token)
+        {
+            double offset = 10 / 304.8;
+            double halfThickness = wCache.Geom.Dims.T / 2 + offset;
+
+            var checkPoints = new List<XYZ>
+            {
+                endPoint + wCache.Geom.Dirs.X * offset * token - wCache.Geom.Dirs.Y * halfThickness + wCache.Geom.Dirs.Z * offset,
+                endPoint + wCache.Geom.Dirs.X * offset * token + wCache.Geom.Dirs.Y * halfThickness + wCache.Geom.Dirs.Z * offset,
+                endPoint - wCache.Geom.Dirs.X * offset * token - wCache.Geom.Dirs.Y * halfThickness + wCache.Geom.Dirs.Z * offset,
+                endPoint - wCache.Geom.Dirs.X * offset * token + wCache.Geom.Dirs.Y * halfThickness + wCache.Geom.Dirs.Z * offset
+            };
+
+            ElementFilter filter1 = new LogicalOrFilter(
+                new BoundingBoxContainsPointFilter(checkPoints[0]),
+                new BoundingBoxContainsPointFilter(checkPoints[1])
+            );
+            ElementFilter filter2 = new LogicalOrFilter(
+                new BoundingBoxContainsPointFilter(checkPoints[2]),
+                new BoundingBoxContainsPointFilter(checkPoints[3])
+            );
+
+            return collector.WherePasses(new LogicalOrFilter(filter1, filter2)).Any();
+        }
+
 
         // Свойства
         public Wall Wall { get; set; }
