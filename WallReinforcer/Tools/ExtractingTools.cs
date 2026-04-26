@@ -318,14 +318,14 @@ namespace RevitOSA.WallReinforcer.Tools
         /// </summary>
         public static List<VoidCache> ExtractVoidCaches(Element elem)
         {
-            Document doc = elem.Document;
-            
             if (elem is not HostObject hostObject)
                 return new List<VoidCache>();
                 
-            return (from id in hostObject.FindInserts(false, false, false, false)
-                    where doc.GetElement(id) is FamilyInstance fi && fi.Host.Id == hostObject.Id
-                    select new VoidCache(fi)).ToList();
+            Document doc = hostObject.Document;
+            return hostObject.FindInserts(false, false, false, false)
+                .Where(id => doc.GetElement(id) is FamilyInstance fi && fi.Host.Id == hostObject.Id)
+                .Select(id => new VoidCache(doc.GetElement(id) as FamilyInstance))
+                .ToList();
         }
         
         /// <summary>
@@ -333,16 +333,14 @@ namespace RevitOSA.WallReinforcer.Tools
         /// </summary>
         public static RebarHostCache GetRebarHostCache(this Element elem)
         {
-            if (StructureElementFilters.Walls.PassesFilter(elem))
-                return new WallCache(elem as Wall);
-            else if (StructureElementFilters.Columns.PassesFilter(elem))
-                return new ColumnCache(elem as FamilyInstance);
-            else if (StructureElementFilters.Floors.PassesFilter(elem))
-                return new SlabCache(elem as Floor);
-            else if (StructureElementFilters.Beams.PassesFilter(elem))
-                return new BeamCache(elem as FamilyInstance);
-            else
-                return null;
+            return elem switch
+            {
+                Wall wall when StructureElementFilters.Walls.PassesFilter(wall) => new WallCache(wall),
+                FamilyInstance fi when StructureElementFilters.Columns.PassesFilter(fi) => new ColumnCache(fi),
+                Floor floor when StructureElementFilters.Floors.PassesFilter(floor) => new SlabCache(floor),
+                FamilyInstance fi when StructureElementFilters.Beams.PassesFilter(fi) => new BeamCache(fi),
+                _ => null
+            };
         }
         
         /// <summary>
@@ -356,9 +354,35 @@ namespace RevitOSA.WallReinforcer.Tools
                 dst);
             ElementFilter filter = new ElementIntersectsSolidFilter(catchSolid);
             
-            return (from elem in collector
-                    where filter.PassesFilter(elem)
-                    select elem).ToList();
+            return collector.WherePasses(filter).ToList();
+        }
+        
+        /// <summary>
+        /// Извлекает прилегающие элементы-хосты на указанную глубину
+        /// </summary>
+        public static List<Element> GetAttachedRebarHosts(this RebarHostCache hostCache, double catchDeep)
+        {
+            Document doc = hostCache.Elem.Document;
+            List<Element> attHosts = new List<Element>();
+            ElementFilter lvlFilter = new ElementLevelFilter(hostCache.Geom.LvlIds.Base);
+            
+            foreach (PlanarFace face in hostCache.Geom.Faces.All)
+            {
+                Solid catchSolid = GeometryCreationUtilities.CreateExtrusionGeometry(
+                    face.GetEdgesAsCurveLoops(), 
+                    face.FaceNormal, 
+                    catchDeep);
+                ElementFilter intersectFilter = new ElementIntersectsSolidFilter(catchSolid);
+                ElementFilter filter = new LogicalAndFilter(lvlFilter, intersectFilter);
+                
+                FilteredElementCollector collector = new FilteredElementCollector(doc)
+                    .OfClass(hostCache.Elem.GetType())
+                    .OfCategory(hostCache.Elem.Category.BuiltInCategory);
+                
+                attHosts.AddRange(collector.WherePasses(filter).ToElements());
+            }
+            
+            return attHosts;
         }
         
         /// <summary>
@@ -389,10 +413,9 @@ namespace RevitOSA.WallReinforcer.Tools
             
             FilteredElementCollector collector = new FilteredElementCollector(doc).WherePasses(filter);
             
-            return (from face in faces
-                    from elem in GetAttachedElements(face, collector, dst)
-                    select GetRebarHostCache(elem))
-                    .ToList();
+            return faces.SelectMany(face => GetAttachedElements(face, collector, dst))
+                        .Select(GetRebarHostCache)
+                        .ToList();
         }
         
         /// <summary>
@@ -415,10 +438,10 @@ namespace RevitOSA.WallReinforcer.Tools
                 .OfClass(typeof(Floor))
                 .WherePasses(filter);
             
-            return (from Floor elem in collector
-                    let slabCache = new SlabCache(elem)
-                    where CheckSlabSupport(slabCache, geomCache, side)
-                    select slabCache).ToList();
+            return collector.Cast<Floor>()
+                .Select(elem => new SlabCache(elem))
+                .Where(slabCache => CheckSlabSupport(slabCache, geomCache, side))
+                .ToList();
         }
         
         /// <summary>
@@ -426,17 +449,14 @@ namespace RevitOSA.WallReinforcer.Tools
         /// </summary>
         private static bool CheckSlabSupport(SlabCache slabCache, GeometryCache geomCache, Side side)
         {
-            switch (side)
+            return side switch
             {
-                case Side.Bottom:
-                    slabCache.GetSupportLines(geomCache, Side.Top);
-                    return slabCache.SupportLines.AllTop.Count > 0;
-                case Side.Top:
-                    slabCache.GetSupportLines(geomCache, Side.Bottom);
-                    return slabCache.SupportLines.AllBottom.Count > 0;
-                default:
-                    return false;
-            }
+                Side.Bottom => slabCache.GetSupportLines(geomCache, Side.Top) != null && 
+                              slabCache.SupportLines.AllTop.Count > 0,
+                Side.Top => slabCache.GetSupportLines(geomCache, Side.Bottom) != null && 
+                           slabCache.SupportLines.AllBottom.Count > 0,
+                _ => false
+            };
         }
         
         /// <summary>
@@ -596,9 +616,7 @@ namespace RevitOSA.WallReinforcer.Tools
                 new BoundingBoxContainsPointFilter(checkPoints[3])
             );
             
-            return (from elem in collector
-                    where filter1.PassesFilter(elem) || filter2.PassesFilter(elem)
-                    select elem).Any();
+            return collector.WherePasses(new LogicalOrFilter(filter1, filter2)).Any();
         }
         
         /// <summary>
