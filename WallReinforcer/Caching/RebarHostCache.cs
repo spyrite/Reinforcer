@@ -76,14 +76,14 @@ namespace RevitOSA.WallReinforcer.Caching
         public List<ColumnCache> UpperColumnCaches { get; set; }
 
         //Методы
-        public List<Element> GetAttachedRebarHosts()
+        public List<Element> GetAttachedRebarHosts(double catchDeep)
         {
-            List<Element> attHosts = new List<Element>();
+            List<Element> attHosts = [];
+            ElementFilter filter1 = new ElementLevelFilter(Geom.LvlIds.Base);
             foreach (PlanarFace face in Geom.Faces.All)
             {
                 List<CurveLoop> cls = face.GetEdgesAsCurveLoops().ToList();
-                Solid catchSolid = GeometryCreationUtilities.CreateExtrusionGeometry(cls, face.FaceNormal, 10 / 304.8);
-                ElementFilter filter1 = new ElementLevelFilter(Geom.LvlIds.Base);
+                Solid catchSolid = GeometryCreationUtilities.CreateExtrusionGeometry(cls, face.FaceNormal, catchDeep);
                 ElementFilter filter2 = new ElementIntersectsSolidFilter(catchSolid);
                 ElementFilter filter = new LogicalAndFilter(filter1, filter2);
 #if REVIT2024 || REVIT2025
@@ -92,8 +92,6 @@ namespace RevitOSA.WallReinforcer.Caching
                 attHosts.AddRange(new FilteredElementCollector(_doc).OfClass(Elem.GetType()).OfCategory((BuiltInCategory)Elem.Category.Id.IntegerValue).WherePasses(filter).ToElements().ToList());
 #endif
             }
-
-
             return attHosts;
         }
 
@@ -278,6 +276,8 @@ namespace RevitOSA.WallReinforcer.Caching
             topAnc -= topAnc > 0 ? 0 : rebarCoverEdge;
             return topAnc;
         }
+
+
 
         private void GetSheetSetNames()
         {

@@ -119,10 +119,17 @@ namespace RevitOSA.WallReinforcer.Caching
         /// <summary>
         /// Данные о соседних элементах стены
         /// </summary>
-        private record NeighborElements(
-            List<RebarHostCache> UpperHostCaches,
-            List<RebarHostCache> LowerHostCaches
-        );
+        private class NeighborElements
+        {
+            public List<RebarHostCache> UpperHostCaches { get; }
+            public List<RebarHostCache> LowerHostCaches { get; }
+
+            public NeighborElements(List<RebarHostCache> upperHostCaches, List<RebarHostCache> lowerHostCaches)
+            {
+                UpperHostCaches = upperHostCaches;
+                LowerHostCaches = lowerHostCaches;
+            }
+        }
 
         /// <summary>
         /// Извлекает вышележащие и нижележащие элементы
@@ -158,7 +165,7 @@ namespace RevitOSA.WallReinforcer.Caching
             Intersections = GetWallIntersectionCaches();
             Debug.WriteLine($"[WallCache] Найдено пересечений: {Intersections.Count}");
 
-            Ends = ExtractingTools.GetWallEndCaches(Geom as GeometryWallCache);
+            Ends = ExtractingTools.GetWallEndCaches(this);
             Debug.WriteLine($"[WallCache] Найдено окончаний: {Ends.Count}");
 
             Regions = GetWallRegionCaches();
@@ -271,7 +278,7 @@ namespace RevitOSA.WallReinforcer.Caching
         public List<XYZ> GetWallRegionsPointsFromEnds()
         {
             List<XYZ> regionsPoints = new List<XYZ>();
-            if (Ends == null) Ends = ExtractingTools.GetWallEndCaches(Geom as GeometryWallCache);
+            if (Ends == null) Ends = ExtractingTools.GetWallEndCaches(this);
             foreach (WallEndCache end in Ends)
             {
                 if (end != null)

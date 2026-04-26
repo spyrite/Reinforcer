@@ -512,31 +512,35 @@ namespace RevitOSA.WallReinforcer.Tools
             return colCaches;
         }
         
-        public static List<WallEndCache> GetWallEndCaches(GeometryWallCache geomWallCache)
+        public static List<WallEndCache> GetWallEndCaches(WallCache wCache)
         {
-            Document doc = geomWallCache.Elem.Document;
+            Document doc = wCache.Elem.Document;
             List<WallEndCache> endCaches = new List<WallEndCache> { null, null };
             List<ElementFilter> filters = new List<ElementFilter>
             {
                 StructureElementFilters.ColumnsOrWalls,
-                new ElementLevelFilter(geomWallCache.LvlIds.Bot),
+                new ElementLevelFilter(wCache.Geom.LvlIds.Bot),
             };
             ElementFilter filter = new LogicalAndFilter(filters);
             FilteredElementCollector collector = new FilteredElementCollector(doc).WherePasses(filter);
             List<XYZ> endPoints = new List<XYZ>
             {
-                geomWallCache.Origins.CenterStartBottom,
-                geomWallCache.Origins.CenterEndBottom
+                wCache.Geom.Origins.CenterStartBottom,
+                wCache.Geom.Origins.CenterEndBottom
             };
             List<int> tokens = new List<int> { 1, -1 };
             for (int i = 0; i < 2; i++)
             {
                 filters = new List<ElementFilter>
                 {
-                    new BoundingBoxContainsPointFilter(endPoints[i] + geomWallCache.Dirs.X * 10 / 304.8 * tokens[i] - geomWallCache.Dirs.Y * (geomWallCache.Dims.T / 2 + 10 / 304.8) + geomWallCache.Dirs.Z * 10 / 304.8),
-                    new BoundingBoxContainsPointFilter(endPoints[i] + geomWallCache.Dirs.X * 10 / 304.8 * tokens[i] + geomWallCache.Dirs.Y * (geomWallCache.Dims.T / 2 + 10 / 304.8) + geomWallCache.Dirs.Z * 10 / 304.8),
-                    new BoundingBoxContainsPointFilter(endPoints[i] - geomWallCache.Dirs.X * 10 / 304.8 * tokens[i] - geomWallCache.Dirs.Y * (geomWallCache.Dims.T / 2 + 10 / 304.8) + geomWallCache.Dirs.Z * 10 / 304.8),
-                    new BoundingBoxContainsPointFilter(endPoints[i] - geomWallCache.Dirs.X * 10 / 304.8 * tokens[i] + geomWallCache.Dirs.Y * (geomWallCache.Dims.T / 2 + 10 / 304.8) + geomWallCache.Dirs.Z * 10 / 304.8)
+                    new BoundingBoxContainsPointFilter(endPoints[i] + wCache.Geom.Dirs.X * 10 / 304.8 * tokens[i] 
+                    - wCache.Geom.Dirs.Y * (wCache.Geom.Dims.T / 2 + 10 / 304.8) + wCache.Geom.Dirs.Z * 10 / 304.8),
+                    new BoundingBoxContainsPointFilter(endPoints[i] + wCache.Geom.Dirs.X * 10 / 304.8 * tokens[i] 
+                    + wCache.Geom.Dirs.Y * (wCache.Geom.Dims.T / 2 + 10 / 304.8) + wCache.Geom.Dirs.Z * 10 / 304.8),
+                    new BoundingBoxContainsPointFilter(endPoints[i] - wCache.Geom.Dirs.X * 10 / 304.8 * tokens[i] 
+                    - wCache.Geom.Dirs.Y * (wCache.Geom.Dims.T / 2 + 10 / 304.8) + wCache.Geom.Dirs.Z * 10 / 304.8),
+                    new BoundingBoxContainsPointFilter(endPoints[i] - wCache.Geom.Dirs.X * 10 / 304.8 * tokens[i] 
+                    + wCache.Geom.Dirs.Y * (wCache.Geom.Dims.T / 2 + 10 / 304.8) + wCache.Geom.Dirs.Z * 10 / 304.8)
                 };
                 ElementFilter filter1 = new LogicalOrFilter(filters[0], filters[1]);
                 ElementFilter filter2 = new LogicalOrFilter(filters[2], filters[3]);
@@ -548,8 +552,8 @@ namespace RevitOSA.WallReinforcer.Tools
                 if (attachedElements.Count > 0)
                 {
                     XYZ origin = endPoints[i];
-                    XYZ xDir = geomWallCache.Dirs.X * tokens[i];
-                    WallEndCache endCache = new WallEndCache(geomWallCache, origin, xDir);
+                    XYZ xDir = wCache.Geom.Dirs.X * tokens[i];
+                    WallEndCache endCache = new(wCache, origin, xDir);
                 }
             }
             ;
