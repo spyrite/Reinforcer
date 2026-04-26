@@ -12,9 +12,6 @@ namespace RevitOSA.WallReinforcer.Tools
 {
     public static class GeometryTools
     {
-        //Поля 
-        private static XYZ centerPoint;
-        private static Plane workPlane;
 
         #region Points and vectors
         public static XYZ VecABS(this XYZ vec)
@@ -124,8 +121,8 @@ namespace RevitOSA.WallReinforcer.Tools
         {
             if (lines.Count > 1)
             {
-                List<XYZ> points = (from line in lines
-                                    select line.GetEndPoint(0)).ToList();
+                List<XYZ> points = [.. lines.Select(l => l.GetEndPoint(0))];
+
                 foreach (Line line in lines)
                 {
                     XYZ p1 = line.GetEndPoint(1);
@@ -137,11 +134,11 @@ namespace RevitOSA.WallReinforcer.Tools
                     else { points.Add(p1); }
                 }
 
-                centerPoint = new XYZ(points.Sum(p => p.X) / points.Count,
+                XYZ centerPoint = new(points.Sum(p => p.X) / points.Count,
                                      points.Sum(p => p.Y) / points.Count,
                                      points.Sum(p => p.Z) / points.Count);
-                workPlane = Plane.CreateByThreePoints(points[0], points[1], points[2]);
-                points = points.OrderBy(AngleBetweenPointAndCenterPoint).ToList();
+                Plane workPlane = Plane.CreateByThreePoints(points[0], points[1], points[2]);
+                points = [.. points.OrderBy(p => p.AngleBetweenPointAndCenterPoint(workPlane, centerPoint))];
                 return points;
             }
             return null;
@@ -231,7 +228,7 @@ namespace RevitOSA.WallReinforcer.Tools
         #endregion
 
         #region Angles
-        private static double AngleBetweenPointAndCenterPoint(XYZ point) { return workPlane.XVec.AngleOnPlaneTo(point - centerPoint, workPlane.Normal); }
+        private static double AngleBetweenPointAndCenterPoint(this XYZ point, Plane workPlane, XYZ centerPoint) => workPlane.XVec.AngleOnPlaneTo(point - centerPoint, workPlane.Normal);
         #endregion
 
         public static List<double> SummaryXYAngleDataOld(double alphaX, double alphaY)
