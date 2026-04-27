@@ -131,7 +131,7 @@ namespace RevitOSA.WallReinforcer.Revit
                             null, null, wCache.Elem, wCache.Geom.Dirs.Y, [vLine], RebarHookOrientation.Left, RebarHookOrientation.Left, true, false);
                         vRebar.SetVerticalRebarConstarints(wCache.Geom.Faces, attachmentCache.Geom.Faces, wCache.Geom.Dirs.X, attachmentCache.Geom.Dirs.X,
                             wCache.Reinf.DataX.D, wCache.Reinf.DataY.D, attachmentCache.Reinf.DataY.D);
-                        SetParameters(vRebar, ReinforcementPartitionNames.reinfPartName_VertCorner, wCache.PhaseId, wCache.Zone, wCache.Section);
+                        SetRebarParameters(vRebar, ReinforcementPartitionNames.reinfPartName_VertCorner, wCache.PhaseId, wCache.Zone, wCache.Section);
                         vRebars.Add(vRebar);
 
                         //Установка П-образных хомутов
@@ -139,7 +139,7 @@ namespace RevitOSA.WallReinforcer.Revit
                         {
                             Rebar stirrup = SetStirrup(vRebars[i - 1], vRebars[i], wCache);
                             stirrup.SetStirrupConstarints(new Tuple<Rebar, Rebar>(vRebars[i - 1], vRebars[i]), wCache.Geom.Dims.T);
-                            SetParameters(stirrup, ReinforcementPartitionNames.reinfPartName_PStirrups, wCache.PhaseId, wCache.Zone, wCache.Section);
+                            SetRebarParameters(stirrup, ReinforcementPartitionNames.reinfPartName_PStirrups, wCache.PhaseId, wCache.Zone, wCache.Section);
                         }
                     }
                 }
@@ -181,7 +181,7 @@ namespace RevitOSA.WallReinforcer.Revit
                         wCache.Geom.Dirs.X * wallIntersectionReinfMatrix[i][0], [vLine], RebarHookOrientation.Left, RebarHookOrientation.Left, true, false);
                     vRebar.SetVerticalRebarConstarints(wCache.Geom.Faces, attachmentCache.Geom.Faces, wCache.Geom.Dirs.X, attachmentCache.Geom.Dirs.X,
                         wCache.Reinf.DataX.D, wCache.Reinf.DataY.D, attachmentCache.Reinf.DataY.D);
-                    SetParameters(vRebar, ReinforcementPartitionNames.reinfPartName_VertCorner, wCache.PhaseId, wCache.Zone, wCache.Section);
+                    SetRebarParameters(vRebar, ReinforcementPartitionNames.reinfPartName_VertCorner, wCache.PhaseId, wCache.Zone, wCache.Section);
                     vRebars.Add(vRebar);
 
                     //Установка П-образных хомутов
@@ -189,7 +189,7 @@ namespace RevitOSA.WallReinforcer.Revit
                     {
                         Rebar stirrup = SetStirrup(vRebars[i - 1], vRebars[i], wCache);
                         stirrup.SetStirrupConstarints(new Tuple<Rebar, Rebar>(vRebars[i - 1], vRebars[i]), wCache.Geom.Dims.T);
-                        SetParameters(stirrup, ReinforcementPartitionNames.reinfPartName_PStirrups, wCache.PhaseId, wCache.Zone, wCache.Section);
+                        SetRebarParameters(stirrup, ReinforcementPartitionNames.reinfPartName_PStirrups, wCache.PhaseId, wCache.Zone, wCache.Section);
                     }
                 }
             }
@@ -254,14 +254,21 @@ namespace RevitOSA.WallReinforcer.Revit
                     List<CurveLoop> arBounds = [.. arSolid.Faces.OfType<PlanarFace>()
                         .Where(f => f.FaceNormal.IsAlmostEqualTo(region.Geom.Dirs.Y)).Select(f => f.GetEdgesAsCurveLoops()).First()];
 
+
                     foreach (CurveLoop arBound in arBounds)
                     {
                         AreaReinforcement ar = AreaReinforcement.Create(Doc, wCache.Elem, [.. arBound], region.Geom.Dirs.X,
                             _arType.Id, region.Reinf.DataY.BarType.Id, ElementId.InvalidElementId);
+                        SetARParameters(ar, ReinforcementPartitionNames.reinfPartName_VertInside, 
+                            ReinforcementPartitionNames.reinfPartName_VertOutside, i, region.Reinf.DataY.Step);
+
+                        //Создание арматурного стержня, настройка зависимостей, определение параметров
+                        foreach (ElementId id in AreaReinforcement.RemoveAreaReinforcementSystem(Doc, ar))
+                        {
+                            RebarCache rc = new(Doc.GetElement(id) as Rebar);
+                            if (rc.PrimaryData.Dir.IsAlmostEqualTo(-XYZ.BasisZ)) rc.Mirror(0);
+                        }
                     }
-
-                    //Создание арматурного стержня, настройка зависимостей, определение параметров
-
                 }
             }
 
@@ -302,7 +309,7 @@ namespace RevitOSA.WallReinforcer.Revit
         /// <summary>
         /// Вызывать только при открытой транзакции
         /// </summary>
-        private void SetParameters(Element elem, string partitionName, ElementId phaseId, string zone, string section)
+        private void SetRebarParameters(Element elem, string partitionName, ElementId phaseId, string zone, string section)
         {
             if (Doc.IsWorkshared & _worksetIntId != -1) elem.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM)?.Set(_worksetIntId);
             if (partitionName != null) elem.get_Parameter(BuiltInParameter.NUMBER_PARTITION_PARAM)?.Set(partitionName);
@@ -311,7 +318,27 @@ namespace RevitOSA.WallReinforcer.Revit
             if (section != null) elem.get_Parameter(Guid.Parse(RevitParameters.p_Identity_Section))?.Set(section);
         }
 
-        private static RebarShape GetRebarShape(int intId)
+        private void SetARParameters(AreaReinforcement ar, string partitionName1, string partitionName2, int i, double stepY)
+        {
+            ar.get_Parameter(BuiltInParameter.REBAR_SYSTEM_ACTIVE_FRONT_DIR_1).Set(0);
+            ar.get_Parameter(BuiltInParameter.REBAR_SYSTEM_ACTIVE_BACK_DIR_1).Set(0);
+            if (0 <= i & i <= 1)
+            {
+                ar.get_Parameter(BuiltInParameter.REBAR_SYSTEM_ACTIVE_FRONT_DIR_2).Set(0);
+                ar.get_Parameter(BuiltInParameter.REBAR_SYSTEM_ACTIVE_BACK_DIR_2).Set(1);
+                ar.get_Parameter(BuiltInParameter.REBAR_SYSTEM_SPACING_BACK_DIR_2).Set(stepY * 2);
+                ar.get_Parameter(BuiltInParameter.NUMBER_PARTITION_PARAM).Set(partitionName1);
+            }
+            else
+            {
+                ar.get_Parameter(BuiltInParameter.REBAR_SYSTEM_ACTIVE_FRONT_DIR_2).Set(1);
+                ar.get_Parameter(BuiltInParameter.REBAR_SYSTEM_ACTIVE_BACK_DIR_2).Set(0);
+                ar.get_Parameter(BuiltInParameter.REBAR_SYSTEM_SPACING_FRONT_DIR_2).Set(stepY * 2);
+                ar.get_Parameter(BuiltInParameter.NUMBER_PARTITION_PARAM).Set(partitionName2);
+            }
+        }
+
+        private RebarShape GetRebarShape(int intId)
         {
             Element elem = Doc.GetElement(new ElementId(intId));
             return elem is RebarShape ? elem as RebarShape : null;

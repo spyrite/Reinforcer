@@ -1,11 +1,13 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
+using RevitOSA.WallReinforcer.Customs;
+using RevitOSA.WallReinforcer.Resources;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using RevitOSA.WallReinforcer.Resources;
-
+using System.Numerics;
 using static RevitOSA.WallReinforcer.Resources1P.RevitParameters;
+using Plane = Autodesk.Revit.DB.Plane;
 using ReinforcementData = RevitOSA.WallReinforcer.Resources.ReinforcementData;
 
 namespace RevitOSA.WallReinforcer.Caching
@@ -13,14 +15,14 @@ namespace RevitOSA.WallReinforcer.Caching
     public class RebarCache
     {
         // Поля
-        private protected Document doc;
+        private protected Document _doc;
 
         // Конструкторы
         public RebarCache(Rebar rebar)
         {
-            this.doc = rebar.Document;
+            this._doc = rebar.Document;
             Rebar = rebar;
-            Host = doc.GetElement(rebar.GetHostId());
+            Host = _doc.GetElement(rebar.GetHostId());
             GetPrimaryData(rebar);
 
             // Данные по параметрам
@@ -29,7 +31,7 @@ namespace RevitOSA.WallReinforcer.Caching
 
             Normal = rebar.GetShapeDrivenAccessor().Normal;
             Rule = rebar.LayoutRule;
-            HookTypes = new List<RebarHookType> { (RebarHookType)doc.GetElement(rebar.GetHookTypeId(0)), (RebarHookType)doc.GetElement(rebar.GetHookTypeId(1)) };
+            HookTypes = new List<RebarHookType> { (RebarHookType)_doc.GetElement(rebar.GetHookTypeId(0)), (RebarHookType)_doc.GetElement(rebar.GetHookTypeId(1)) };
             HookOrients = new List<RebarHookOrientation> { rebar.GetHookOrientation(0), rebar.GetHookOrientation(1) };
 #if REVIT2023 || REVIT2024 || REVIT2025
             HookAngles = new List<double> { rebar.GetHookRotationAngle(0), rebar.GetHookRotationAngle(1) };
@@ -41,7 +43,7 @@ namespace RevitOSA.WallReinforcer.Caching
             };
 #endif
 
-            Shape = (RebarShape)doc.GetElement(rebar.GetShapeId());
+            Shape = (RebarShape)_doc.GetElement(rebar.GetShapeId());
             if (Shape.SimpleLine && HookTypes[0] == null && HookTypes[1] == null) IsSimple = true;
             else IsSimple = false;
             Style = Shape.RebarStyle;
@@ -49,9 +51,9 @@ namespace RevitOSA.WallReinforcer.Caching
             // Данные по сборкам
             if (rebar.AssemblyInstanceId != ElementId.InvalidElementId)
             {
-                AIName = doc.GetElement(rebar.AssemblyInstanceId).Name;
+                AIName = _doc.GetElement(rebar.AssemblyInstanceId).Name;
                 ParentId = rebar.AssemblyInstanceId;
-                ATMark = doc.GetElement(doc.GetElement(rebar.AssemblyInstanceId).GetTypeId()).get_Parameter(BuiltInParameter.WINDOW_TYPE_ID).AsString();
+                ATMark = _doc.GetElement(_doc.GetElement(rebar.AssemblyInstanceId).GetTypeId()).get_Parameter(BuiltInParameter.WINDOW_TYPE_ID).AsString();
             }
             else
             {
@@ -60,18 +62,11 @@ namespace RevitOSA.WallReinforcer.Caching
                 ATMark = null;
             }
 
-            CenterLineSets = new List<List<Curve>>();
-#if REVIT2024 || REVIT2025
-            for (int i = 0; i < rebar.Quantity; i++) CenterLineSets.Add(
-                rebar.GetTransformedCenterlineCurves(false, true, true, MultiplanarOption.IncludeOnlyPlanarCurves, i).ToList());
-#else
-            for (int i = 0; i < rebar.Quantity; i++) CenterLineSets.Add(
-                rebar.GetCenterlineCurves(false, true, true, MultiplanarOption.IncludeOnlyPlanarCurves, i).ToList());
-#endif
+            GetCenterLineSets(rebar);
         }
         public RebarCache(Document doc, RebarContainerItem rci)
         {
-            this.doc = doc;
+            this._doc = doc;
             RCI = rci;
             GetPrimaryData(rci);
 
@@ -232,6 +227,17 @@ namespace RevitOSA.WallReinforcer.Caching
             }
             return false;
         }
+        public void Mirror(int i)
+        {
+            if (CenterLineSets[0][i] is Line)
+            {
+                XYZ origin = CenterLineSets[0][i].ComputeDerivatives(0.5, true).Origin;
+                XYZ mirrorDir = (CenterLineSets[0][i] as Line).Direction;
+                Plane mirrorPlane = Plane.CreateByNormalAndOrigin(mirrorDir, origin);
+                Rebar mirroredRebar = ElementTransformUtils.MirrorElements(_doc, [this.Rebar.Id], mirrorPlane, false).FirstOrDefault()?.GetElement(_doc) as Rebar;
+                UpdateBy(mirroredRebar);
+            }
+        }
 
         public Face GetNearestFace(List<PlanarFace> faces, int i)
         {
@@ -245,7 +251,7 @@ namespace RevitOSA.WallReinforcer.Caching
         {
             ReinforcementData data = new ReinforcementData
             {
-                BarType = (RebarBarType)doc.GetElement(rebar.GetTypeId()),
+                BarType = (RebarBarType)_doc.GetElement(rebar.GetTypeId()),
                 Dir = rebar.GetShapeDrivenAccessor().GetDistributionPath().Direction,
 #if REVIT2024 || REVIT2025
                 CenterLines = rebar.GetTransformedCenterlineCurves(false, true, true, MultiplanarOption.IncludeOnlyPlanarCurves, 0).ToList(),
@@ -271,7 +277,7 @@ namespace RevitOSA.WallReinforcer.Caching
         {
             ReinforcementData data = new ReinforcementData
             {
-                BarType = (RebarBarType)doc.GetElement(rci.BarTypeId),
+                BarType = (RebarBarType)_doc.GetElement(rci.BarTypeId),
                 Dir = rci.GetDistributionPath().Direction,
                 CenterLines = rci.GetCenterlineCurves(false, true, true).ToList(),
                 N = rci.Quantity,
@@ -292,6 +298,27 @@ namespace RevitOSA.WallReinforcer.Caching
             if (Rule != RebarLayoutRule.Single) data.Step = rci.MaxSpacing;
             else data.Step = 0;
             PrimaryData = data;
+        }
+
+        private void GetCenterLineSets(Rebar rebar)
+        {
+            CenterLineSets = [];
+#if REVIT2024 || REVIT2025
+            for (int i = 0; i < rebar.Quantity; i++) CenterLineSets.Add(
+                [.. rebar.GetTransformedCenterlineCurves(false, true, true, MultiplanarOption.IncludeOnlyPlanarCurves, i)]);
+#else
+            for (int i = 0; i < rebar.Quantity; i++) CenterLineSets.Add(
+                [.. rebar.GetCenterlineCurves(false, true, true, MultiplanarOption.IncludeOnlyPlanarCurves, i)]);
+#endif
+        }
+
+        private void UpdateBy(Rebar newRebar)
+        {
+            Rebar = newRebar;
+            Host = _doc.GetElement(newRebar.GetHostId());
+            GetPrimaryData(newRebar);
+            Normal = newRebar.GetShapeDrivenAccessor().Normal;
+            GetCenterLineSets(newRebar);
         }
 
         // Свойства
