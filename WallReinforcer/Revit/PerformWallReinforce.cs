@@ -265,7 +265,10 @@ namespace RevitOSA.WallReinforcer.Revit
                         //Создание арматурного стержня, настройка зависимостей, определение параметров
                         foreach (ElementId id in AreaReinforcement.RemoveAreaReinforcementSystem(Doc, ar))
                         {
-                            RebarCache rc = new(Doc.GetElement(id) as Rebar);
+                            Rebar vRebar = Doc.GetElement(id) as Rebar
+                                ?? CreateUnknowRebar(arLines, region, i);
+
+                            RebarCache rc = new(vRebar);
                             if (rc.PrimaryData.Dir.IsAlmostEqualTo(-XYZ.BasisZ)) rc.Mirror(0);
                         }
                     }
@@ -342,6 +345,15 @@ namespace RevitOSA.WallReinforcer.Revit
         {
             Element elem = Doc.GetElement(new ElementId(intId));
             return elem is RebarShape ? elem as RebarShape : null;
+        }
+
+        private Rebar CreateUnknowRebar(List<Curve> lines, WallRegionCache region, int i)
+        {
+            XYZ p0 = lines[-1].ComputeDerivatives(0.5, true).Origin + region.Geom.Dirs.Y * (region.Geom.Dims.T / 2 + (50 / 304.8) * tokens[i]);
+            XYZ p1 = lines[1].ComputeDerivatives(0.5, true).Origin + region.Geom.Dirs.Y * (region.Geom.Dims.T / 2 + (50 / 304.8) * tokens[i]);
+            Line line = Line.CreateBound(p0, p1);
+            return Rebar.CreateFromCurves(Doc, RebarStyle.Standard, region.Reinf.DataY.BarType, null, null, region.Elem, 
+                region.Geom.Dirs.X * wallRegionReinfMatrix[i][0], [line], RebarHookOrientation.Left, RebarHookOrientation.Left, true, false);
         }
     }
 }
