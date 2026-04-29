@@ -99,100 +99,140 @@ namespace RevitOSA.WallReinforcer.Revit
             return Result.Succeeded;
         }
 
+        private const double FeetToMm = 304.8;
+        private const double OverlapFactor = 1.3;
+        private const double RoundingStep = 10;
+
         private void CreateVerticalRebarsOnIntersectionsWithColumnCages(WallCache wCache, double preOffset, double tolerance)
         {
+            ValidateWallCache(wCache);
+
             foreach (WallIntersectionCache inter in wCache.Intersections)
             {
-                //Соседний элемент
-                RebarHostCache attachmentCache = inter.AttachedRebarHostCaches.First();
-                
-                //Перепуск снизу
-                double botOv = (Math.Floor(ReinforcementTools.ComputeAorOVLength(wCache.Reinf.DataY.D, wCache.BClass, wCache.Reinf.RClass, AnchorMode.OverlapCompress))
-                                * 1.3 * 304.8 / 10) * 10 / 304.8;
+                RebarHostCache attachmentCache = inter.AttachedRebarHostCaches.FirstOrDefault();
+                if (attachmentCache == null) continue;
 
-                //Определение выпуска сверху
-                double topAnc = inter.GetTopAnc(wCache.Reinf.DataY.D, wCache.Reinf.DataY.RClass, ReinfSettings.Default.reinf_RebarCover_Edge / 304.8);
+                double botOv = CalculateBottomOverlap(wCache);
+                double topAnc = inter.GetTopAnc(wCache.Reinf.DataY.D, wCache.Reinf.DataY.RClass, 
+                    ReinfSettings.Default.reinf_RebarCover_Edge / FeetToMm);
 
-                //Построение арматурных стержней
-                List<Rebar> vRebars = [];
-                for (int i = 0; i < wallIntersectionReinfMatrix.Count; i++)
-                {
-                    XYZ startPoint = inter.Geom.Origins.CenterMiddleBottom + wCache.Geom.Dirs.X * (preOffset / 304.8) * wallIntersectionReinfMatrix[i][0] 
-                        - wCache.Geom.Dirs.Y * (preOffset / 304.8) * wallIntersectionReinfMatrix[i][1];
-                    if (!startPoint.IsPointNearHostEdge(wCache.Geom, attachmentCache.Geom, preOffset, tolerance))
-                    {
-                        //Построение линии арматурного стержня
-                        XYZ p0 = startPoint + wCache.Geom.Dirs.Z * botOv * wallIntersectionReinfMatrix[i][2];
-                        XYZ p1 = startPoint + wCache.Geom.Dirs.Z * (wCache.Geom.Dims.H + topAnc);
-                        Line vLine = Line.CreateBound(p0, p1);
+                List<Rebar> vRebars = CreateVerticalRebarsCore(wCache, inter, attachmentCache, 
+                    preOffset / FeetToMm, botOv, topAnc, tolerance, isColumnCage: true);
 
-                        //Создание арматурного стержня, настройка зависимостей, определение параметров
-                        Rebar vRebar = Rebar.CreateFromCurves(Doc, RebarStyle.Standard, wCache.Reinf.DataY.BarType,
-                            null, null, wCache.Elem, wCache.Geom.Dirs.Y, [vLine], RebarHookOrientation.Left, RebarHookOrientation.Left, true, false);
-                        vRebar.SetVerticalRebarConstarints(wCache.Geom.Faces, attachmentCache.Geom.Faces, wCache.Geom.Dirs.X, attachmentCache.Geom.Dirs.X,
-                            wCache.Reinf.DataX.D, wCache.Reinf.DataY.D, attachmentCache.Reinf.DataY.D);
-                        SetRebarParameters(vRebar, ReinforcementPartitionNames.reinfPartName_VertCorner, wCache.PhaseId, wCache.Zone, wCache.Section);
-                        vRebars.Add(vRebar);
-
-                        //Установка П-образных хомутов
-                        if (vRebars.Count == 2 || vRebars.Count == 4)
-                        {
-                            Rebar stirrup = SetStirrup(vRebars[i - 1], vRebars[i], wCache);
-                            stirrup.SetStirrupConstarints(new Tuple<Rebar, Rebar>(vRebars[i - 1], vRebars[i]), wCache.Geom.Dims.T);
-                            SetRebarParameters(stirrup, ReinforcementPartitionNames.reinfPartName_PStirrups, wCache.PhaseId, wCache.Zone, wCache.Section);
-                        }
-                    }
-                }
+                InstallStirrups(vRebars, wCache);
             }
         }
 
         private void CreateVerticalRebarsOnIntersectionsWithWalls(WallCache wCache, double preOffset, double heightLimit)
         {
+            ValidateWallCache(wCache);
+
             foreach (WallIntersectionCache inter in wCache.Intersections)
             {
-                //Соседний элемент
-                RebarHostCache attachmentCache = inter.AttachedRebarHostCaches.First();
+                RebarHostCache attachmentCache = inter.AttachedRebarHostCaches.FirstOrDefault();
+                if (attachmentCache == null) continue;
 
-                //Перепуск снизу
-                double botOv = (Math.Floor(ReinforcementTools.ComputeAorOVLength(wCache.Reinf.DataY.D, wCache.BClass, wCache.Reinf.RClass, AnchorMode.OverlapCompress))
-                                * 1.3 * 304.8 / 10) * 10 / 304.8;
+                double botOv = CalculateBottomOverlap(wCache);
+                double topOv = inter.GetTopOv(wCache.Reinf.DataY.D, wCache.Reinf.DataY.RClass, 
+                    heightLimit, ReinfSettings.Default.reinf_RebarCover_Edge / FeetToMm, out int k);
 
-                //Определение выпуска сверху
-                double topOv = inter.GetTopOv(wCache.Reinf.DataY.D, wCache.Reinf.DataY.RClass, heightLimit, ReinfSettings.Default.reinf_RebarCover_Edge / 304.8, out int k);
-
-                //Построение арматурных стержней
-                List<Rebar> vRebars = [];
-                Line cutLine = Line.CreateBound(inter.Geom.Origins.CenterMiddleBottom, inter.Geom.Origins.CenterMiddleTop);
                 if (wCache.Geom.Solid == null) wCache.Geom.GetSolidData();
+                Line cutLine = Line.CreateBound(inter.Geom.Origins.CenterMiddleBottom, inter.Geom.Origins.CenterMiddleTop);
                 List<Curve> spotLines = [.. wCache.Geom.Solid.IntersectWithCurve(cutLine, null)];
+                double spotLength = spotLines.FirstOrDefault()?.Length ?? 0;
 
-                for (int i = 0; i < wallIntersectionReinfMatrix.Count; i++)
+                List<Rebar> vRebars = CreateVerticalRebarsCore(wCache, inter, attachmentCache,
+                    preOffset, botOv, topOv, spotLength, k, isColumnCage: false);
+
+                InstallStirrups(vRebars, wCache);
+            }
+        }
+
+        private static double CalculateBottomOverlap(WallCache wCache)
+        {
+            double rawLength = ReinforcementTools.ComputeAorOVLength(
+                wCache.Reinf.DataY.D, wCache.BClass, wCache.Reinf.RClass, AnchorMode.OverlapCompress);
+            return RoundToStep(rawLength * OverlapFactor);
+        }
+
+        private static double RoundToStep(double value)
+        {
+            return Math.Floor(value * FeetToMm / RoundingStep) * RoundingStep / FeetToMm;
+        }
+
+        private List<Rebar> CreateVerticalRebarsCore(WallCache wCache, WallIntersectionCache inter, 
+            RebarHostCache attachmentCache, double offsetFactor, double botOv, double topValue, 
+            double tolerance = 0, bool isColumnCage = true)
+        {
+            List<Rebar> vRebars = [];
+
+            for (int i = 0; i < wallIntersectionReinfMatrix.Count; i++)
+            {
+                XYZ startPoint = inter.Geom.Origins.CenterMiddleBottom 
+                    + wCache.Geom.Dirs.X * offsetFactor * wallIntersectionReinfMatrix[i][0]
+                    - wCache.Geom.Dirs.Y * offsetFactor * wallIntersectionReinfMatrix[i][1];
+
+                if (isColumnCage && !startPoint.IsPointNearHostEdge(wCache.Geom, attachmentCache.Geom, 
+                    offsetFactor * FeetToMm, tolerance))
                 {
-                    //Построение линии арматурного стержня
-                    XYZ startPoint = inter.Geom.Origins.CenterMiddleBottom + wCache.Geom.Dirs.X * preOffset * wallIntersectionReinfMatrix[i][0]
-                        - wCache.Geom.Dirs.Y * preOffset * wallIntersectionReinfMatrix[i][1];
-                    XYZ p0 = startPoint + wCache.Geom.Dirs.Z * (spotLines.FirstOrDefault()?.Length ?? botOv * wallIntersectionReinfMatrix[i][2]);
-                    XYZ p1 = startPoint + wCache.Geom.Dirs.Z * (wCache.Geom.Dims.H + topOv
-                        + (spotLines.Any() ? Math.Floor(topOv * 1.3 * 304.8 / 10) * 10 / 304.8 : botOv) * wallIntersectionReinfMatrix[i][2] * k);
-                    Line vLine = Line.CreateBound(p0, p1);
+                    continue;
+                }
 
-                    //Создание арматурного стержня, настройка зависимостей, определение параметров
-                    Rebar vRebar = Rebar.CreateFromCurves(Doc, RebarStyle.Standard, wCache.Reinf.DataY.BarType, null, null, wCache.Elem,
-                        wCache.Geom.Dirs.X * wallIntersectionReinfMatrix[i][0], [vLine], RebarHookOrientation.Left, RebarHookOrientation.Left, true, false);
-                    vRebar.SetVerticalRebarConstarints(wCache.Geom.Faces, attachmentCache.Geom.Faces, wCache.Geom.Dirs.X, attachmentCache.Geom.Dirs.X,
-                        wCache.Reinf.DataX.D, wCache.Reinf.DataY.D, attachmentCache.Reinf.DataY.D);
-                    SetRebarParameters(vRebar, ReinforcementPartitionNames.reinfPartName_VertCorner, wCache.PhaseId, wCache.Zone, wCache.Section);
-                    vRebars.Add(vRebar);
+                double startZ = isColumnCage ? botOv * wallIntersectionReinfMatrix[i][2] : botOv;
+                double endZ = wCache.Geom.Dims.H + topValue;
+                
+                if (!isColumnCage)
+                {
+                    endZ += wallIntersectionReinfMatrix[i][2] * GetAdditionalOverlap(topValue, wallIntersectionReinfMatrix[i][2]);
+                }
 
-                    //Установка П-образных хомутов
-                    if (vRebars.Count == 2 || vRebars.Count == 4)
-                    {
-                        Rebar stirrup = SetStirrup(vRebars[i - 1], vRebars[i], wCache);
-                        stirrup.SetStirrupConstarints(new Tuple<Rebar, Rebar>(vRebars[i - 1], vRebars[i]), wCache.Geom.Dims.T);
-                        SetRebarParameters(stirrup, ReinforcementPartitionNames.reinfPartName_PStirrups, wCache.PhaseId, wCache.Zone, wCache.Section);
-                    }
+                XYZ p0 = startPoint + wCache.Geom.Dirs.Z * startZ;
+                XYZ p1 = startPoint + wCache.Geom.Dirs.Z * endZ;
+                Line vLine = Line.CreateBound(p0, p1);
+
+                Rebar vRebar = Rebar.CreateFromCurves(Doc, RebarStyle.Standard, wCache.Reinf.DataY.BarType,
+                    null, null, wCache.Elem,
+                    isColumnCage ? wCache.Geom.Dirs.Y : wCache.Geom.Dirs.X * wallIntersectionReinfMatrix[i][0],
+                    [vLine], RebarHookOrientation.Left, RebarHookOrientation.Left, true, false);
+
+                vRebar.SetVerticalRebarConstarints(wCache.Geom.Faces, attachmentCache.Geom.Faces, 
+                    wCache.Geom.Dirs.X, attachmentCache.Geom.Dirs.X,
+                    wCache.Reinf.DataX.D, wCache.Reinf.DataY.D, attachmentCache.Reinf.DataY.D);
+
+                SetRebarParameters(vRebar, ReinforcementPartitionNames.reinfPartName_VertCorner, 
+                    wCache.PhaseId, wCache.Zone, wCache.Section);
+                
+                vRebars.Add(vRebar);
+            }
+
+            return vRebars;
+        }
+
+        private static double GetAdditionalOverlap(double topOv, int matrixFactor)
+        {
+            return matrixFactor != 0 ? RoundToStep(topOv * OverlapFactor) : 0;
+        }
+
+        private void InstallStirrups(List<Rebar> vRebars, WallCache wCache)
+        {
+            for (int i = 1; i < vRebars.Count; i += 2)
+            {
+                if (vRebars.Count == 2 || vRebars.Count == 4)
+                {
+                    Rebar stirrup = SetStirrup(vRebars[i - 1], vRebars[i], wCache);
+                    stirrup.SetStirrupConstarints(new Tuple<Rebar, Rebar>(vRebars[i - 1], vRebars[i]), 
+                        wCache.Geom.Dims.T);
+                    SetRebarParameters(stirrup, ReinforcementPartitionNames.reinfPartName_PStirrups, 
+                        wCache.PhaseId, wCache.Zone, wCache.Section);
                 }
             }
+        }
+
+        private static void ValidateWallCache(WallCache wCache)
+        {
+            if (wCache == null) throw new ArgumentNullException(nameof(wCache));
+            if (wCache.Intersections == null) throw new ArgumentException("Intersections cannot be null", nameof(wCache));
+            if (wCache.Reinf?.DataY == null) throw new ArgumentException("Reinforcement data is missing", nameof(wCache));
         }
 
         private void CreateVerticalRebarsOnWallRegions(WallCache wCache, double preOffset, double heightLimit)
